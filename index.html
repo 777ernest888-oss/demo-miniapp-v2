@@ -37,9 +37,9 @@
 </head>
 <body>
     <div class="container">
-        <h1> Админка Недвижимости v2</h1>
+        <h1>🏢 Админка Недвижимости v2</h1>
         <div id="alertContainer"></div>
-        <button class="btn btn-primary" onclick="showAddForm()" style="margin-bottom: 20px;">➕ Добавить объект</button>
+        <button class="btn btn-primary" onclick="showAddForm()" style="margin-bottom: 20px;"> Добавить объект</button>
         <div id="propertiesList" class="loading">Загрузка объектов...</div>
     </div>
 
@@ -99,17 +99,23 @@
             if (properties.length === 0) {                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Нет объектов. Создайте первый!</p>';
                 return;
             }
-            container.innerHTML = properties.map(prop => `
+            container.innerHTML = properties.map(prop => {
+                // Преобразуем строки обратно в массивы для отображения
+                const gallery = prop.images_gallery ? prop.images_gallery.split(',').map(url => url.trim()).filter(url => url) : [];
+                const mainImage = prop.image_main || (gallery.length > 0 ? gallery[0] : null);
+               
+                return `
                 <div class="property-card">
                     <h3>${escapeHtml(prop.name || 'Без названия')}</h3>
-                    <p> ${escapeHtml(prop.address || 'Адрес не указан')}</p>
+                    <p>📍 ${escapeHtml(prop.address || 'Адрес не указан')}</p>
+                    ${mainImage ? `<img src="${mainImage}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;margin-top:10px;">` : ''}
                     <div class="property-actions">
                         <button class="btn btn-secondary" onclick="toggleProperty('${prop.id}', ${prop.active !== false})">${prop.active !== false ? '🙈 Скрыть' : '✅ Показать'}</button>
-                        <button class="btn btn-primary" onclick="editProperty('${prop.id}')">✏️ Редактировать</button>
-                        <button class="btn btn-danger" onclick="deleteProperty('${prop.id}')"> Удалить</button>
+                        <button class="btn btn-primary" onclick="editProperty('${prop.id}')">️ Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteProperty('${prop.id}')">🗑 Удалить</button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function showAddForm() {
@@ -139,13 +145,13 @@
                 document.getElementById('propClass').value = prop.class || 'Комфорт';
                 document.getElementById('propStatus').value = prop.status || 'Строится';
                 document.getElementById('propDescription').value = prop.description || '';
-                selectedPhotos = { main: null, gallery: [], plans: [] };
-                clearPhotoPreviews();
+                selectedPhotos = { main: null, gallery: [], plans: [] };                clearPhotoPreviews();
                 if (prop.image_main) {
                     document.getElementById('mainPhotoPreview').innerHTML = `<img src="${prop.image_main}">`;
                 }
                 document.getElementById('propertyModal').classList.add('active');
-            } catch (error) {                showAlert('Ошибка: ' + error.message, 'error');
+            } catch (error) {
+                showAlert('Ошибка: ' + error.message, 'error');
             }
         }
 
@@ -188,13 +194,13 @@
                     img.src = e.target.result;
                     document.getElementById('plansPreview').appendChild(img);
                 };
-                reader.readAsDataURL(file);
-            });
+                reader.readAsDataURL(file);            });
         }
 
         function clearPhotoPreviews() {
             document.getElementById('mainPhotoPreview').innerHTML = '';
-            document.getElementById('galleryPreview').innerHTML = '';            document.getElementById('plansPreview').innerHTML = '';
+            document.getElementById('galleryPreview').innerHTML = '';
+            document.getElementById('plansPreview').innerHTML = '';
         }
 
         async function uploadToCloudinary(file, objectId) {
@@ -237,17 +243,20 @@
 
                 const propertyData = {
                     id: objectId,
-                    name: document.getElementById('propName').value,
-                    address: document.getElementById('propAddress').value,
-                    district: document.getElementById('propDistrict').value,
-                    metro: document.getElementById('propMetro').value,
-                    rooms: document.getElementById('propRooms').value,
+                    name: document.getElementById('propName').value,                    address: document.getElementById('propAddress').value,
+                    district: document.getElementById('propDistrict').value || null,
+                    metro: document.getElementById('propMetro').value || null,
+                    rooms: document.getElementById('propRooms').value || null,
                     area_min: parseFloat(document.getElementById('propAreaMin').value) || null,
-                    area_max: parseFloat(document.getElementById('propAreaMax').value) || null,                    price_from: parseInt(document.getElementById('propPriceFrom').value) || null,
+                    area_max: parseFloat(document.getElementById('propAreaMax').value) || null,
+                    price_from: parseInt(document.getElementById('propPriceFrom').value) || null,
                     price_to: parseInt(document.getElementById('propPriceTo').value) || null,
                     class: document.getElementById('propClass').value,
                     status: document.getElementById('propStatus').value,
-                    description: document.getElementById('propDescription').value,
+                    description: document.getElementById('propDescription').value || null,
+                    image_main: null,
+                    images_gallery: '', // СТРОКА, а не массив!
+                    floor_plans_images: '', // СТРОКА, а не массив!
                     updated_at: new Date().toISOString()
                 };
 
@@ -265,7 +274,8 @@
                             const result = await uploadToCloudinary(file, objectId);
                             urls.push(result.secure_url);
                         }
-                        propertyData.images_gallery = urls;
+                        // Преобразуем массив в строку через запятую
+                        propertyData.images_gallery = urls.join(',');
                     }
 
                     if (selectedPhotos.plans.length > 0) {
@@ -274,15 +284,15 @@
                             const result = await uploadToCloudinary(file, objectId);
                             urls.push(result.secure_url);
                         }
-                        propertyData.floor_plans_images = urls;
+                        // Преобразуем массив в строку через запятую
+                        propertyData.floor_plans_images = urls.join(',');
                     }
                 }
 
                 if (propertyId) {
                     const { error } = await db.from('properties').update(propertyData).eq('id', propertyId);
                     if (error) throw error;
-                    showAlert('Объект обновлён!', 'success');
-                } else {
+                    showAlert('Объект обновлён!', 'success');                } else {
                     propertyData.created_at = new Date().toISOString();
                     propertyData.active = true;
                     const { error } = await db.from('properties').insert([propertyData]);
@@ -292,7 +302,8 @@
 
                 closeModal();
                 await loadProperties();
-            } catch (error) {                showAlert('Ошибка: ' + error.message, 'error');
+            } catch (error) {
+                showAlert('Ошибка: ' + error.message, 'error');
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = originalText;
@@ -330,7 +341,6 @@
             container.appendChild(alert);
             setTimeout(() => alert.remove(), 5000);
         }
-
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
