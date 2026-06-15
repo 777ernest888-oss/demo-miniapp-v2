@@ -75,12 +75,14 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const tg = window.Telegram.WebApp;
+        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
         let selectedPhotos = { main: null, gallery: [], plans: [] };
 
         document.addEventListener('DOMContentLoaded', async () => {
-            tg.expand();
-            tg.ready();
+            if (tg) {
+                tg.expand();
+                tg.ready();
+            }
             await loadProperties();
         });
 
@@ -94,9 +96,9 @@
             }
         }
 
-        function renderProperties(properties) {
-            const container = document.getElementById('propertiesList');
-            if (properties.length === 0) {                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Нет объектов. Создайте первый!</p>';
+        function renderProperties(properties) {            const container = document.getElementById('propertiesList');
+            if (properties.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Нет объектов. Создайте первый!</p>';
                 return;
             }
             container.innerHTML = properties.map(prop => {
@@ -143,9 +145,9 @@
                 document.getElementById('propClass').value = prop.class || 'Комфорт';
                 document.getElementById('propStatus').value = prop.status || 'Строится';
                 document.getElementById('propDescription').value = prop.description || '';
-                selectedPhotos = { main: null, gallery: [], plans: [] };
-                clearPhotoPreviews();
-                if (prop.image_main) {                    document.getElementById('mainPhotoPreview').innerHTML = `<img src="${prop.image_main}">`;
+                selectedPhotos = { main: null, gallery: [], plans: [] };                clearPhotoPreviews();
+                if (prop.image_main) {
+                    document.getElementById('mainPhotoPreview').innerHTML = `<img src="${prop.image_main}">`;
                 }
                 document.getElementById('propertyModal').classList.add('active');
             } catch (error) {
@@ -192,9 +194,9 @@
 
         document.getElementById('propertyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('saveBtn');
-            const origText = btn.textContent;
+            const btn = document.getElementById('saveBtn');            const origText = btn.textContent;
             btn.disabled = true; btn.textContent = 'Сохранение...';
+
             try {
                 const propId = document.getElementById('propertyId').value;
                 const objId = propId || 'obj_' + Date.now();
@@ -241,9 +243,9 @@
                 if (propId) {
                     result = await db.from('properties').update(data).eq('id', propId);
                 } else {
-                    data.created_at = new Date().toISOString();
-                    result = await db.from('properties').insert([data]);
+                    data.created_at = new Date().toISOString();                    result = await db.from('properties').insert([data]);
                 }
+
                 if (result.error) throw result.error;
                 showAlert(propId ? 'Объект обновлён!' : 'Объект создан!', 'success');
                 closeModal();
