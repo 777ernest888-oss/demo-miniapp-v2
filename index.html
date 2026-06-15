@@ -3,52 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест Supabase</title>
+    <title>Админка Недвижимости v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; }
-        #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .property-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .property-card h3 { color: #333; margin-bottom: 10px; }
+        .property-card p { color: #666; margin: 5px 0; }
+        .property-actions { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: flex-start; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; width: 100%; max-width: 600px; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        .photo-upload { border: 2px dashed #ddd; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px; }
+        .photo-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .photo-preview img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <h1>Тест создания объекта</h1>
-    <button onclick="testCreate()">Создать тестовый объект</button>
-    <div id="result"></div>
+    <div class="container">
+        <h1>🏢 Админка Недвижимости v2</h1>
+        <div id="alertContainer"></div>
+        <button class="btn btn-primary" onclick="showAddForm()" style="margin-bottom: 20px;"> Добавить объект</button>
+        <div id="propertiesList" class="loading">Загрузка объектов...</div>
+    </div>
+
+    <div id="propertyModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Новый объект</h2>
+            <form id="propertyForm">
+                <input type="hidden" id="propertyId">                <div class="form-group"><label>Название ЖК *</label><input type="text" id="propName" required></div>
+                <div class="form-group"><label>Адрес *</label><input type="text" id="propAddress" required></div>
+                <div class="form-group"><label>Район</label><input type="text" id="propDistrict"></div>
+                <div class="form-group"><label>Метро</label><input type="text" id="propMetro"></div>
+                <div class="form-group"><label>Комнат</label><input type="text" id="propRooms"></div>
+                <div class="form-group"><label>Площадь мин</label><input type="number" id="propAreaMin" step="0.1"></div>
+                <div class="form-group"><label>Площадь макс</label><input type="number" id="propAreaMax" step="0.1"></div>
+                <div class="form-group"><label>Цена от</label><input type="number" id="propPriceFrom"></div>
+                <div class="form-group"><label>Цена до</label><input type="number" id="propPriceTo"></div>
+                <div class="form-group"><label>Класс</label><select id="propClass"><option value="Комфорт">Комфорт</option><option value="Бизнес">Бизнес</option><option value="Премиум">Премиум</option></select></div>
+                <div class="form-group"><label>Статус</label><select id="propStatus"><option value="Строится">Строится</option><option value="Сдан">Сдан</option></select></div>
+                <div class="form-group"><label>Описание</label><textarea id="propDescription"></textarea></div>
+                <div class="form-group"><label>Главное фото</label><div class="photo-upload"><input type="file" id="mainPhotoInput" accept="image/*" onchange="handleMainPhotoSelect(event)"><div id="mainPhotoPreview" class="photo-preview"></div></div></div>
+                <div class="form-group"><label>Галерея</label><div class="photo-upload"><input type="file" id="galleryInput" accept="image/*" multiple onchange="handleGallerySelect(event)"><div id="galleryPreview" class="photo-preview"></div></div></div>
+                <div class="form-group"><label>Планировки</label><div class="photo-upload"><input type="file" id="plansInput" accept="image/*" multiple onchange="handlePlansSelect(event)"><div id="plansPreview" class="photo-preview"></div></div></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button type="submit" class="btn btn-success" id="saveBtn">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
+        const ADMIN_USER_ID = '2038206387';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const tg = window.Telegram.WebApp;
+        let selectedPhotos = { main: null, gallery: [], plans: [] };
 
-        async function testCreate() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = 'Создание...';
-           
+        document.addEventListener('DOMContentLoaded', async () => {
+            tg.expand();
+            tg.ready();
+            await loadProperties();
+        });
+
+        async function loadProperties() {
             try {
-                const testData = {
-                    id: 'test-' + Date.now(),
-                    name: 'Тестовый объект',
-                    address: 'Тестовый адрес',
-                    active: true
-                };
-               
-                console.log('Отправляем данные:', testData);
-               
-                const { data, error } = await db.from('properties').insert([testData]);
-               
-                if (error) {
-                    resultDiv.innerHTML = '❌ Ошибка: ' + error.message + '<br>Детали: ' + JSON.stringify(error);
-                    console.error('Ошибка:', error);
-                } else {
-                    resultDiv.innerHTML = '✅ Успех! Объект создан: ' + JSON.stringify(data);
-                    console.log('Успех:', data);
-                }
-            } catch (err) {
-                resultDiv.innerHTML = '❌ Исключение: ' + err.message;
-                console.error('Исключение:', err);
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                renderProperties(data || []);
+            } catch (error) {
+                showAlert('Ошибка загрузки: ' + error.message, 'error');
             }
         }
+
+        function renderProperties(properties) {
+            const container = document.getElementById('propertiesList');
+            if (properties.length === 0) {                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Нет объектов. Создайте первый!</p>';
+                return;
+            }
+            container.innerHTML = properties.map(prop => {
+                const gallery = prop.images_gallery ? prop.images_gallery.split(',').map(u => u.trim()).filter(u => u) : [];
+                const mainImg = prop.image_main || (gallery.length ? gallery[0] : null);
+                return `
+                <div class="property-card">
+                    <h3>${escapeHtml(prop.name || 'Без названия')}</h3>
+                    <p>📍 ${escapeHtml(prop.address || 'Адрес не указан')}</p>
+                    ${mainImg ? `<img src="${mainImg}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;margin-top:10px;">` : ''}
+                    <div class="property-actions">
+                        <button class="btn btn-secondary" onclick="toggleProperty('${prop.id}', ${prop.active !== false})">${prop.active !== false ? ' Скрыть' : '✅ Показать'}</button>
+                        <button class="btn btn-primary" onclick="editProperty('${prop.id}')">✏️ Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteProperty('${prop.id}')">🗑 Удалить</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function showAddForm() {
+            document.getElementById('modalTitle').textContent = 'Новый объект';
+            document.getElementById('propertyForm').reset();
+            document.getElementById('propertyId').value = '';
+            selectedPhotos = { main: null, gallery: [], plans: [] };
+            clearPhotoPreviews();
+            document.getElementById('propertyModal').classList.add('active');
+        }
+
+        async function editProperty(id) {
+            try {
+                const { data: prop, error } = await db.from('properties').select('*').eq('id', id).single();
+                if (error) throw error;
+                document.getElementById('modalTitle').textContent = 'Редактирование';
+                document.getElementById('propertyId').value = prop.id;
+                document.getElementById('propName').value = prop.name || '';
+                document.getElementById('propAddress').value = prop.address || '';
+                document.getElementById('propDistrict').value = prop.district || '';
+                document.getElementById('propMetro').value = prop.metro || '';
+                document.getElementById('propRooms').value = prop.rooms || '';
+                document.getElementById('propAreaMin').value = prop.area_min || '';
+                document.getElementById('propAreaMax').value = prop.area_max || '';
+                document.getElementById('propPriceFrom').value = prop.price_from || '';
+                document.getElementById('propPriceTo').value = prop.price_to || '';
+                document.getElementById('propClass').value = prop.class || 'Комфорт';
+                document.getElementById('propStatus').value = prop.status || 'Строится';
+                document.getElementById('propDescription').value = prop.description || '';
+                selectedPhotos = { main: null, gallery: [], plans: [] };
+                clearPhotoPreviews();
+                if (prop.image_main) {                    document.getElementById('mainPhotoPreview').innerHTML = `<img src="${prop.image_main}">`;
+                }
+                document.getElementById('propertyModal').classList.add('active');
+            } catch (error) {
+                showAlert('Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() { document.getElementById('propertyModal').classList.remove('active'); }
+
+        function handleMainPhotoSelect(e) {
+            const f = e.target.files[0]; if (!f) return;
+            selectedPhotos.main = f;
+            const r = new FileReader(); r.onload = ev => document.getElementById('mainPhotoPreview').innerHTML = `<img src="${ev.target.result}">`; r.readAsDataURL(f);
+        }
+        function handleGallerySelect(e) {
+            Array.from(e.target.files).forEach(f => {
+                if (!f.type.startsWith('image/')) return;
+                selectedPhotos.gallery.push(f);
+                const r = new FileReader(); r.onload = ev => { const i = document.createElement('img'); i.src = ev.target.result; document.getElementById('galleryPreview').appendChild(i); }; r.readAsDataURL(f);
+            });
+        }
+        function handlePlansSelect(e) {
+            Array.from(e.target.files).forEach(f => {
+                if (!f.type.startsWith('image/')) return;
+                selectedPhotos.plans.push(f);
+                const r = new FileReader(); r.onload = ev => { const i = document.createElement('img'); i.src = ev.target.result; document.getElementById('plansPreview').appendChild(i); }; r.readAsDataURL(f);
+            });
+        }
+        function clearPhotoPreviews() {
+            document.getElementById('mainPhotoPreview').innerHTML = '';
+            document.getElementById('galleryPreview').innerHTML = '';
+            document.getElementById('plansPreview').innerHTML = '';
+        }
+
+        async function uploadToCloudinary(file, objectId) {
+            const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', { p_admin_id: ADMIN_USER_ID, p_object_id: objectId });
+            if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
+            const fd = new FormData();
+            fd.append('file', file); fd.append('api_key', sig.api_key); fd.append('timestamp', sig.timestamp); fd.append('signature', sig.signature); fd.append('folder', sig.folder);
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`, { method: 'POST', body: fd });
+            if (!res.ok) { const e = await res.json(); throw new Error('Cloudinary: ' + e.error.message); }
+            return await res.json();
+        }
+
+        document.getElementById('propertyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            const origText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Сохранение...';
+            try {
+                const propId = document.getElementById('propertyId').value;
+                const objId = propId || 'obj_' + Date.now();
+
+                const data = {
+                    id: objId,
+                    name: document.getElementById('propName').value,
+                    address: document.getElementById('propAddress').value,
+                    district: document.getElementById('propDistrict').value || null,
+                    metro: document.getElementById('propMetro').value || null,
+                    rooms: document.getElementById('propRooms').value || null,
+                    area_min: parseFloat(document.getElementById('propAreaMin').value) || null,
+                    area_max: parseFloat(document.getElementById('propAreaMax').value) || null,
+                    price_from: parseInt(document.getElementById('propPriceFrom').value) || null,
+                    price_to: parseInt(document.getElementById('propPriceTo').value) || null,
+                    class: document.getElementById('propClass').value,
+                    status: document.getElementById('propStatus').value,
+                    description: document.getElementById('propDescription').value || null,
+                    image_main: null,
+                    images_gallery: '',
+                    floor_plans_images: '',
+                    active: true
+                };
+
+                if (selectedPhotos.main || selectedPhotos.gallery.length || selectedPhotos.plans.length) {
+                    showAlert('Загрузка фото...', 'success');
+                    if (selectedPhotos.main) {
+                        const r = await uploadToCloudinary(selectedPhotos.main, objId);
+                        data.image_main = r.secure_url;
+                    }
+                    if (selectedPhotos.gallery.length) {
+                        const urls = [];
+                        for (const f of selectedPhotos.gallery) { const r = await uploadToCloudinary(f, objId); urls.push(r.secure_url); }
+                        data.images_gallery = urls.join(',');
+                    }
+                    if (selectedPhotos.plans.length) {
+                        const urls = [];
+                        for (const f of selectedPhotos.plans) { const r = await uploadToCloudinary(f, objId); urls.push(r.secure_url); }
+                        data.floor_plans_images = urls.join(',');
+                    }
+                }
+
+                let result;
+                if (propId) {
+                    result = await db.from('properties').update(data).eq('id', propId);
+                } else {
+                    data.created_at = new Date().toISOString();
+                    result = await db.from('properties').insert([data]);
+                }
+                if (result.error) throw result.error;
+                showAlert(propId ? 'Объект обновлён!' : 'Объект создан!', 'success');
+                closeModal();
+                await loadProperties();
+            } catch (err) {
+                showAlert('Ошибка: ' + err.message, 'error');
+                console.error(err);
+            } finally {
+                btn.disabled = false; btn.textContent = origText;
+            }
+        });
+
+        async function toggleProperty(id, cur) {
+            try {
+                const { error } = await db.from('properties').update({ active: !cur }).eq('id', id);
+                if (error) throw error;
+                await loadProperties();
+                showAlert(cur ? 'Скрыт' : 'Показан', 'success');
+            } catch (err) { showAlert('Ошибка: ' + err.message, 'error'); }
+        }
+
+        async function deleteProperty(id) {
+            if (!confirm('Удалить объект?')) return;
+            try {
+                const { error } = await db.from('properties').delete().eq('id', id);
+                if (error) throw error;
+                await loadProperties();
+                showAlert('Удалён', 'success');
+            } catch (err) { showAlert('Ошибка: ' + err.message, 'error'); }
+        }
+
+        function showAlert(msg, type) {
+            const c = document.getElementById('alertContainer');
+            const a = document.createElement('div'); a.className = `alert alert-${type}`; a.textContent = msg;
+            c.appendChild(a); setTimeout(() => a.remove(), 4000);
+        }
+        function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     </script>
 </body>
 </html>
