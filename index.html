@@ -37,7 +37,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🏢 Админка Недвижимости v2</h1>
+        <h1> Админка Недвижимости v2</h1>
         <div id="alertContainer"></div>
         <button class="btn btn-primary" onclick="showAddForm()" style="margin-bottom: 20px;">➕ Добавить объект</button>
         <div id="propertiesList" class="loading">Загрузка объектов...</div>
@@ -74,7 +74,7 @@
         const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const tg = window.Telegram.WebApp;
         let selectedPhotos = { main: null, gallery: [], plans: [] };
 
@@ -86,7 +86,7 @@
 
         async function loadProperties() {
             try {
-                const { data, error } = await supabase.from('properties').select('*').order('created_at', { ascending: false });
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 renderProperties(data || []);
             } catch (error) {
@@ -102,11 +102,11 @@
             container.innerHTML = properties.map(prop => `
                 <div class="property-card">
                     <h3>${escapeHtml(prop.name || 'Без названия')}</h3>
-                    <p>📍 ${escapeHtml(prop.address || 'Адрес не указан')}</p>
+                    <p> ${escapeHtml(prop.address || 'Адрес не указан')}</p>
                     <div class="property-actions">
                         <button class="btn btn-secondary" onclick="toggleProperty('${prop.id}', ${prop.active !== false})">${prop.active !== false ? '🙈 Скрыть' : '✅ Показать'}</button>
-                        <button class="btn btn-primary" onclick="editProperty('${prop.id}')">️ Редактировать</button>
-                        <button class="btn btn-danger" onclick="deleteProperty('${prop.id}')">🗑 Удалить</button>
+                        <button class="btn btn-primary" onclick="editProperty('${prop.id}')">✏️ Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteProperty('${prop.id}')"> Удалить</button>
                     </div>
                 </div>
             `).join('');
@@ -123,7 +123,7 @@
 
         async function editProperty(id) {
             try {
-                const { data: prop, error } = await supabase.from('properties').select('*').eq('id', id).single();
+                const { data: prop, error } = await db.from('properties').select('*').eq('id', id).single();
                 if (error) throw error;
                 document.getElementById('modalTitle').textContent = 'Редактирование';
                 document.getElementById('propertyId').value = prop.id;
@@ -198,7 +198,7 @@
         }
 
         async function uploadToCloudinary(file, objectId) {
-            const { data: sigData, error: sigError } = await supabase.rpc('get_cloudinary_signature', {
+            const { data: sigData, error: sigError } = await db.rpc('get_cloudinary_signature', {
                 p_admin_id: ADMIN_USER_ID,
                 p_object_id: objectId
             });
@@ -279,13 +279,13 @@
                 }
 
                 if (propertyId) {
-                    const { error } = await supabase.from('properties').update(propertyData).eq('id', propertyId);
+                    const { error } = await db.from('properties').update(propertyData).eq('id', propertyId);
                     if (error) throw error;
                     showAlert('Объект обновлён!', 'success');
                 } else {
                     propertyData.created_at = new Date().toISOString();
                     propertyData.active = true;
-                    const { error } = await supabase.from('properties').insert([propertyData]);
+                    const { error } = await db.from('properties').insert([propertyData]);
                     if (error) throw error;
                     showAlert('Объект создан!', 'success');
                 }
@@ -301,7 +301,7 @@
 
         async function toggleProperty(id, currentStatus) {
             try {
-                const { error } = await supabase.from('properties').update({ active: !currentStatus, updated_at: new Date().toISOString() }).eq('id', id);
+                const { error } = await db.from('properties').update({ active: !currentStatus, updated_at: new Date().toISOString() }).eq('id', id);
                 if (error) throw error;
                 await loadProperties();
                 showAlert(currentStatus ? 'Скрыт' : 'Показан', 'success');
@@ -313,7 +313,7 @@
         async function deleteProperty(id) {
             if (!confirm('Удалить объект?')) return;
             try {
-                const { error } = await supabase.from('properties').delete().eq('id', id);
+                const { error } = await db.from('properties').delete().eq('id', id);
                 if (error) throw error;
                 await loadProperties();
                 showAlert('Удалён', 'success');
