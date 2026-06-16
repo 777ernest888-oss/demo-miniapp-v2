@@ -193,7 +193,7 @@
 
     <script>
         // === ВЕРСИОНИРОВАНИЕ ===
-        const APP_VERSION = '2.0.14';
+        const APP_VERSION = '2.0.15';
         document.getElementById('app-version-display').textContent = APP_VERSION;       
         (function checkVersion() {
             try {
@@ -217,7 +217,7 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
        
-        console.log(' Admin App v' + APP_VERSION + ' starting...');
+        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
 
         // === ИНИЦИАЛИЗАЦИЯ TELEGRAM ===
         let tg = null;
@@ -300,7 +300,7 @@
                
             } catch (error) {
                 console.error('❌ Ошибка загрузки:', error);
-                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;"> Ошибка: ' + error.message + '</p>' +
+                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>' +
                     '<button class="btn btn-primary" onclick="loadProperties()" style="margin-top:15px;">🔄 Повторить</button>';
             }
         }
@@ -495,16 +495,16 @@
 
         async function toggleProperty(id, currentStatus, btn) {
             console.log('👁 Переключение:', id, currentStatus);
+            if (!btn) return;
             const origText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = ' ...';
+            btn.textContent = '⏳ ...';
            
             try {
                 const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
                 if (error) throw error;
                
-                // Принудительная перезагрузка через 500мс
-                setTimeout(loadProperties, 500);
+                setTimeout(function() { loadProperties(); }, 500);
             } catch(e) {
                 console.error('❌ Ошибка:', e);
                 alert('Ошибка: ' + e.message);
@@ -519,6 +519,7 @@
             if (!confirm('Удалить объект?')) return;
            
             console.log('🗑 Удаление:', id);
+            if (!btn) return;
             const origText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ ...';
@@ -527,8 +528,7 @@
                 const { error } = await db.from('properties').delete().eq('id', id);
                 if (error) throw error;
                
-                // Принудительная перезагрузка через 500мс
-                setTimeout(loadProperties, 500);
+                setTimeout(function() { loadProperties(); }, 500);
             } catch(e) {
                 console.error('❌ Ошибка:', e);
                 alert('Ошибка: ' + e.message);
