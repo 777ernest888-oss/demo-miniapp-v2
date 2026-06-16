@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+   
+    <title>Админка Недвижимости v2</title>
+   
+    <!-- ВНЕШНЯЯ ЗАГРУЗКА TELEGRAM SDK (не inline!) -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+   
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+   
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --secondary: #6c757d;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #dee2e6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 20px; }
+       
+        .header { background: var(--card-bg); padding: 15px; text-align: center; font-weight: bold; font-size: 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .tabs { display: flex; background: var(--card-bg); border-bottom: 1px solid var(--border); position: sticky; top: 53px; z-index: 99; overflow-x: auto; }
+        .tab-btn { flex: 1; padding: 12px 5px; border: none; background: none; font-size: 14px; font-weight: 500; color: var(--secondary); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+       
+        .tab-content { display: none; padding: 15px; }
+        .tab-content.active { display: block; }
+       
+        .card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card h3 { margin-bottom: 8px; font-size: 16px; }
+        .card p { color: #666; font-size: 14px; margin: 4px 0; }
+        .card img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
+       
+        .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: opacity 0.2s; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; margin-bottom: 15px; padding: 14px; font-size: 16px; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-secondary { background: var(--secondary); color: white; }        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .actions .btn { flex: 1; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+       
+        .photo-upload { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 10px; background: #fafafa; }
+        .photo-upload input[type="file"] { width: 100%; }
+        .photo-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .photo-preview img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+        .modal.active { display: block; }
+        .modal-content { background: var(--card-bg); margin: 20px auto; padding: 20px; border-radius: 12px; max-width: 600px; width: 95%; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; display: none; animation: fadeIn 0.3s; }
+        .alert.show { display: block; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        .loading { text-align: center; padding: 30px; color: #666; }
+       
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="header">🏢 Админка v2</div>
+   
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('properties')">Объекты</button>
+        <button class="tab-btn" onclick="switchTab('leads')">Заявки</button>
+        <button class="tab-btn" onclick="switchTab('agent')">Агент</button>
+        <button class="tab-btn" onclick="switchTab('settings')">Настройки</button>
+    </div>
+
+    <div id="tab-properties" class="tab-content active">
+        <div id="alert-props" class="alert"></div>
+        <button class="btn btn-primary" onclick="openPropertyModal()">+ Добавить объект</button>
+        <div id="properties-list" class="loading">Загрузка...</div>
+    </div>
+
+    <div id="tab-leads" class="tab-content">
+        <div id="alert-leads" class="alert"></div>
+        <div id="leads-list" class="loading">Загрузка заявок...</div>
+    </div>
+    <div id="tab-agent" class="tab-content">
+        <div id="alert-agent" class="alert"></div>
+       
+        <div class="card">
+            <h3>Контактная информация</h3>
+            <form id="agent-form">
+                <div class="form-group"><label>Имя</label><input type="text" id="agent-name"></div>
+                <div class="form-group"><label>Роль</label><input type="text" id="agent-role"></div>
+                <div class="form-group"><label>Телефон</label><input type="text" id="agent-phone"></div>
+                <div class="form-group"><label>Telegram</label><input type="text" id="agent-telegram"></div>
+                <div class="form-group"><label>Агентство</label><input type="text" id="agent-agency"></div>
+                <button type="button" class="btn btn-success" onclick="saveAgentData()">Сохранить контакты</button>
+            </form>
+        </div>
+       
+        <div class="card">
+            <h3>Текст "Обо мне" (для клиентов)</h3>
+            <div class="form-group">
+                <label>Содержание страницы (простой текст, без тегов)</label>
+                <textarea id="about-content" rows="12" placeholder="Привет! Я — профессиональный брокер..."></textarea>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="saveAboutPage()">Сохранить текст</button>
+        </div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+        <div class="card">
+            <h3>Информация о системе</h3>
+            <p>Версия: <span id="app-version-display">—</span></p>
+            <p>Статус: ✅ Работает стабильно</p>
+            <p>Загрузка фото: Cloudinary Signed Upload</p>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
+            <p style="color: #999; font-size: 12px;">Все данные хранятся в Supabase. Фото — в Cloudinary.</p>
+        </div>
+    </div>
+
+    <div id="property-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Новый объект</h2>
+                <button class="close-btn" onclick="closePropertyModal()">&times;</button>
+            </div>
+            <form id="property-form">
+                <input type="hidden" id="prop-id">
+                <div class="form-group"><label>Название ЖК *</label><input type="text" id="prop-name" required></div>
+                <div class="form-group"><label>Адрес *</label><input type="text" id="prop-address" required></div>
+                <div class="form-group"><label>Район</label><input type="text" id="prop-district"></div>
+                <div class="form-group"><label>Метро</label><input type="text" id="prop-metro"></div>
+                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
+                <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
+                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
+                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
+                <div class="form-group"><label>Класс</label>
+                    <select id="prop-class">
+                        <option value="Комфорт">Комфорт</option>
+                        <option value="Бизнес">Бизнес</option>
+                        <option value="Премиум">Премиум</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Статус</label>
+                    <select id="prop-status">
+                        <option value="Строится">Строится</option>
+                        <option value="Сдан">Сдан</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Описание</label><textarea id="prop-description"></textarea></div>
+               
+                <div class="form-group">
+                    <label>Главное фото</label>
+                    <div class="photo-upload">
+                        <input type="file" id="main-photo" accept="image/*" onchange="previewPhoto(this, 'main-preview')">
+                        <div id="main-preview" class="photo-preview"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Галерея</label>
+                    <div class="photo-upload">
+                        <input type="file" id="gallery-photos" accept="image/*" multiple onchange="previewPhotos(this, 'gallery-preview')">
+                        <div id="gallery-preview" class="photo-preview"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Планировки</label>
+                    <div class="photo-upload">
+                        <input type="file" id="plan-photos" accept="image/*" multiple onchange="previewPhotos(this, 'plan-preview')">
+                        <div id="plan-preview" class="photo-preview"></div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-secondary" onclick="closePropertyModal()">Отмена</button>
+                    <button type="submit" class="btn btn-success" id="save-prop-btn">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>        // === ВЕРСИОНИРОВАНИЕ ===
+        const APP_VERSION = '2.0.10';
+        document.getElementById('app-version-display').textContent = APP_VERSION;
+       
+        (function checkVersion() {
+            try {
+                const storedVersion = localStorage.getItem('admin_app_version');
+                if (storedVersion !== APP_VERSION) {
+                    console.log('🔄 Обновление версии:', storedVersion, '->', APP_VERSION);
+                    localStorage.setItem('admin_app_version', APP_VERSION);
+                    if ('caches' in window) {
+                        caches.keys().then(function(names) {
+                            names.forEach(function(name) { caches.delete(name); });
+                        });
+                    }
+                }
+            } catch(e) {
+                console.log('⚠️ localStorage недоступен:', e.message);
+            }
+        })();
+
+        // === КОНФИГУРАЦИЯ ===
+        const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
+        const ADMIN_USER_ID = '2038206387';
+       
+        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
+
+        // === ИНИЦИАЛИЗАЦИЯ TELEGRAM ===
+        let tg = null;
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                console.log('✅ Telegram WebApp initialized');
+            }
+        } catch(e) {
+            console.log('⚠️ Telegram init error:', e.message);
+        }
+
+        // === ИНИЦИАЛИЗАЦИЯ SUPABASE ===
+        let db;
+        try {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase initialized');
+        } catch(e) {
+            console.error('❌ Supabase init error:', e);
+        }
+        let selectedFiles = { main: null, gallery: [], plans: [] };
+
+        // === НАВИГАЦИЯ ===
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+           
+            if (tabName === 'leads') loadLeads();
+            if (tabName === 'agent') loadAgentData();
+        }
+
+        function showAlert(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = 'alert alert-' + type + ' show';
+            setTimeout(function() { el.classList.remove('show'); }, 4000);
+        }
+
+        function validatePhoto(file) {
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                throw new Error('Файл слишком большой (' + (file.size/1024/1024).toFixed(1) + ' MB). Максимум 10 MB');
+            }
+        }
+
+        // === ЗАГРУЗКА ОБЪЕКТОВ ===
+        async function loadProperties() {
+            console.log('📥 Loading properties...');
+            const list = document.getElementById('properties-list');
+            list.innerHTML = '<p style="text-align:center;padding:30px;color:#666;">⏳ Загрузка...</p>';
+           
+            try {
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+               
+                if (error) throw error;
+               
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">⚠️ Нет объектов</p>';
+                    return;
+                }
+               
+                list.innerHTML = data.map(function(p) {
+                    return '<div class="card">' +
+                        '<h3>' + (p.name || 'Без названия') + '</h3>' +
+                        '<p>📍 ' + (p.address || 'Адрес не указан') + '</p>' +
+                        '<p>💰 ' + (p.price_from ? p.price_from + ' - ' + p.price_to + ' руб.' : 'Цена не указана') + '</p>' +
+                        (p.image_main ? '<img src="' + p.image_main + '" alt="Фото">' : '') +
+                        '<div class="actions">' +                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
+                                (p.active !== false ? 'Скрыть' : 'Показать') +
+                            '</button>' +
+                            '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\')">Удалить</button>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+               
+            } catch (error) {
+                console.error('❌ Ошибка загрузки:', error);
+                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>';
+            }
+        }
+
+        function openPropertyModal() {
+            document.getElementById('property-form').reset();
+            document.getElementById('prop-id').value = '';
+            document.getElementById('modal-title').textContent = 'Новый объект';
+            selectedFiles = { main: null, gallery: [], plans: [] };
+            document.getElementById('main-preview').innerHTML = '';
+            document.getElementById('gallery-preview').innerHTML = '';
+            document.getElementById('plan-preview').innerHTML = '';
+            document.getElementById('property-modal').classList.add('active');
+        }
+
+        function closePropertyModal() {
+            document.getElementById('property-modal').classList.remove('active');
+        }
+
+        async function editProperty(id) {
+            const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
+            if (error) return alert('Ошибка: ' + error.message);
+           
+            document.getElementById('prop-id').value = p.id;
+            document.getElementById('prop-name').value = p.name || '';
+            document.getElementById('prop-address').value = p.address || '';
+            document.getElementById('prop-district').value = p.district || '';
+            document.getElementById('prop-metro').value = p.metro || '';
+            document.getElementById('prop-rooms').value = p.rooms || '';
+            document.getElementById('prop-area-min').value = p.area_min || '';
+            document.getElementById('prop-area-max').value = p.area_max || '';
+            document.getElementById('prop-price-from').value = p.price_from || '';
+            document.getElementById('prop-price-to').value = p.price_to || '';
+            document.getElementById('prop-class').value = p.class || 'Комфорт';
+            document.getElementById('prop-status').value = p.status || 'Строится';
+            document.getElementById('prop-description').value = p.description || '';
+            document.getElementById('modal-title').textContent = 'Редактировать';
+           
+            selectedFiles = { main: null, gallery: [], plans: [] };            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
+            document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
+            document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
+           
+            document.getElementById('property-modal').classList.add('active');
+        }
+
+        function previewPhoto(input, previewId) {
+            const file = input.files[0];
+            if (!file) return;
+           
+            try {
+                validatePhoto(file);
+                selectedFiles.main = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(previewId).innerHTML = '<img src="' + e.target.result + '">';
+                };
+                reader.readAsDataURL(file);
+            } catch (err) {
+                showAlert('❌ ' + err.message, 'error');
+                input.value = '';
+            }
+        }
+
+        function previewPhotos(input, previewId) {
+            const files = Array.from(input.files);
+            files.forEach(function(f) {
+                try {
+                    validatePhoto(f);
+                    if (previewId === 'gallery-preview') selectedFiles.gallery.push(f);
+                    else selectedFiles.plans.push(f);
+                   
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        document.getElementById(previewId).appendChild(img);
+                    };
+                    reader.readAsDataURL(f);
+                } catch (err) {
+                    showAlert('❌ ' + f.name + ': ' + err.message, 'error');
+                }
+            });
+        }
+
+        async function uploadToCloudinary(file, objectId) {
+            const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
+                p_admin_id: ADMIN_USER_ID,
+                p_object_id: objectId             });
+            if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
+           
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('api_key', sig.api_key);
+            fd.append('timestamp', sig.timestamp);
+            fd.append('signature', sig.signature);
+            fd.append('folder', sig.folder);
+           
+            const res = await fetch('https://api.cloudinary.com/v1_1/' + sig.cloud_name + '/image/upload', {
+                method: 'POST',
+                body: fd
+            });
+            if (!res.ok) {
+                const e = await res.json();
+                throw new Error('Cloudinary: ' + e.error.message);
+            }
+            return await res.json();
+        }
+
+        document.getElementById('property-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+           
+            const btn = document.getElementById('save-prop-btn');
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
+            showAlert('alert-props', 'Загрузка фото...', 'success');
+
+            try {
+                const propId = document.getElementById('prop-id').value;
+                const objectId = propId || 'obj_' + Date.now();
+
+                const data = {
+                    id: objectId,
+                    name: document.getElementById('prop-name').value,
+                    address: document.getElementById('prop-address').value,
+                    district: document.getElementById('prop-district').value || null,
+                    metro: document.getElementById('prop-metro').value || null,
+                    rooms: document.getElementById('prop-rooms').value || null,
+                    area_min: parseFloat(document.getElementById('prop-area-min').value) || null,
+                    area_max: parseFloat(document.getElementById('prop-area-max').value) || null,
+                    price_from: parseInt(document.getElementById('prop-price-from').value) || null,
+                    price_to: parseInt(document.getElementById('prop-price-to').value) || null,
+                    class: document.getElementById('prop-class').value,
+                    status: document.getElementById('prop-status').value,
+                    description: document.getElementById('prop-description').value || null,
+                    image_main: null,
+                    images_gallery: '',                    floor_plans_images: '',
+                    active: true
+                };
+
+                if (selectedFiles.main || selectedFiles.gallery.length || selectedFiles.plans.length) {
+                    if (selectedFiles.main) {
+                        const r = await uploadToCloudinary(selectedFiles.main, objectId);
+                        data.image_main = r.secure_url;
+                    }
+                    if (selectedFiles.gallery.length) {
+                        const urls = [];
+                        for (const f of selectedFiles.gallery) {
+                            const r = await uploadToCloudinary(f, objectId);
+                            urls.push(r.secure_url);
+                        }
+                        data.images_gallery = urls.join(',');
+                    }
+                    if (selectedFiles.plans.length) {
+                        const urls = [];
+                        for (const f of selectedFiles.plans) {
+                            const r = await uploadToCloudinary(f, objectId);
+                            urls.push(r.secure_url);
+                        }
+                        data.floor_plans_images = urls.join(',');
+                    }
+                }
+
+                let result;
+                if (propId) {
+                    if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {
+                        delete data.image_main; delete data.images_gallery; delete data.floor_plans_images;
+                    }
+                    result = await db.from('properties').update(data).eq('id', propId);
+                } else {
+                    data.created_at = new Date().toISOString();
+                    result = await db.from('properties').insert([data]);
+                }
+
+                if (result.error) throw result.error;
+                showAlert('alert-props', propId ? 'Объект обновлён!' : 'Объект создан!', 'success');
+                closePropertyModal();
+                loadProperties();
+            } catch (err) {
+                showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        });
+        async function toggleProperty(id, currentStatus) {
+            const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
+        }
+
+        async function deleteProperty(id) {
+            if (!confirm('Удалить объект?')) return;
+            const { error } = await db.from('properties').delete().eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
+        }
+
+        async function loadLeads() {
+            const list = document.getElementById('leads-list');
+            list.innerHTML = 'Загрузка...';
+            const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
+            if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
+            if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
+           
+            list.innerHTML = data.map(function(l) {
+                return '<div class="card">' +
+                    '<h3>' + (l.name || 'Аноним') + '</h3>' +
+                    '<p>📞 ' + (l.phone || 'Телефон не указан') + '</p>' +
+                    '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +
+                    '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
+                '</div>';
+            }).join('');
+        }
+
+        async function loadAgentData() {
+            const { data: agentData, error: agentError } = await db
+                .from('agent_data')
+                .select('*')
+                .eq('owner_id', ADMIN_USER_ID)
+                .single();
+           
+            if (agentData) {
+                document.getElementById('agent-name').value = agentData.name || '';
+                document.getElementById('agent-role').value = agentData.role || '';
+                document.getElementById('agent-phone').value = agentData.phone || '';
+                document.getElementById('agent-telegram').value = agentData.telegram_username || '';
+                document.getElementById('agent-agency').value = agentData.agency_name || '';
+            }
+           
+            const { data: pageData, error: pageError } = await db
+                .from('pages')
+                .select('content')
+                .eq('page_key', 'about')
+                .single();           
+            if (pageData && pageData.content) {
+                const cleanText = pageData.content
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<b>/gi, '')
+                    .replace(/<\/b>/gi, '')
+                    .replace(/<[^>]*>/g, '');
+               
+                document.getElementById('about-content').value = cleanText;
+            }
+        }
+
+        async function saveAgentData() {
+            const data = {
+                owner_id: ADMIN_USER_ID,
+                name: document.getElementById('agent-name').value,
+                role: document.getElementById('agent-role').value,
+                phone: document.getElementById('agent-phone').value,
+                telegram_username: document.getElementById('agent-telegram').value,
+                agency_name: document.getElementById('agent-agency').value,
+                updated_at: new Date().toISOString()
+            };
+           
+            const { error } = await db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
+            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
+            showAlert('alert-agent', 'Контакты сохранены!', 'success');
+        }
+
+        async function saveAboutPage() {
+            const plainText = document.getElementById('about-content').value;
+            const htmlContent = plainText.split('\n').join('<br>');
+           
+            const { error } = await db
+                .from('pages')
+                .update({
+                    content: htmlContent,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('page_key', 'about');
+           
+            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
+            showAlert('alert-agent', 'Текст обновлён!', 'success');
+        }
+
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        document.addEventListener('DOMContentLoaded', loadProperties);
+    </script>
+</body>
+</html>
