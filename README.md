@@ -135,3 +135,43 @@ Cloudinary (Image Storage & Processing)
 **Последнее обновление:** Июнь 2026
 **Версия:** 2.0 (Mobile Optimized)
 ```
+
+**ДОПОЛНЕНИЕ ОТ 16.06.2026:**
+
+**Проект:** Real Estate Telegram Bot & Admin System v2
+- **URL:** https://777ernest888-oss.github.io/demo-miniapp-v2/
+- **GitHub:** 777ernest888-oss/demo-miniapp-realty
+- **Supabase:** rqiutnpawsmqvmzewamc
+- **Cloudinary:** dljo2y10n, API Key: 551929296895832
+- **Admin ID:** 2038206387
+
+**Архитектура:**
+- Frontend: HTML/JS на GitHub Pages
+- Backend: Supabase (PostgreSQL + pgcrypto)
+- Storage: Cloudinary (Signed Upload)
+
+**Ключевое решение:**
+- Cloudinary подпись через `digest('sha1')` с приклеенным секретом
+- НЕ использовать `hmac()`
+- Строка: `'folder=' || folder || '&timestamp=' || timestamp || api_secret`
+
+**Структура БД:**
+- `properties` - объекты (id, name, address, image_main, images_gallery, floor_plans_images, active)
+- `photos` - информация о фото
+- `app_secrets` - ключи Cloudinary
+
+**Текущий статус:**
+- ✅ CRUD работает
+- ✅ Фото загружаются
+- ✅ Signed Upload работает
+- ⏳ Нужно тестирование в Telegram на мобильном
+
+**Roadmap:**
+- Пункт 0: Тестирование в Telegram (iOS/Android)
+- Этап 1: Оптимизация (сжатие фото, валидация)
+- Этап 2: Функционал (поиск, фильтры, пагинация)
+- Этап 3: Безопасность (авторизация, роли)
+- Этап 4: Масштабирование (PWA, кэширование)
+
+**Документация:**
+- README.md на GitHub содержит полный паспорт проекта
