@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Админка Недвижимости v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- АСИНХРОННАЯ загрузка Telegram SDK -->
-    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
             --primary: #007bff;
@@ -32,9 +31,10 @@
         .card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .card h3 { margin-bottom: 8px; font-size: 16px; }
         .card p { color: #666; font-size: 14px; margin: 4px 0; }
-        .card img { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
+        .card img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
        
-        .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: opacity 0.2s; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-primary { background: var(--primary); color: white; width: 100%; margin-bottom: 15px; padding: 14px; font-size: 16px; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
@@ -50,7 +50,7 @@
                 .photo-upload { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 10px; background: #fafafa; }
         .photo-upload input[type="file"] { width: 100%; }
         .photo-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-        .photo-preview img { width: 100%; height: 80px; object-fit: cover; border-radius: 6px; }
+        .photo-preview img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
         .modal.active { display: block; }
@@ -58,11 +58,13 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
 
-        .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; display: none; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; display: none; animation: fadeIn 0.3s; }
         .alert.show { display: block; }
         .alert-success { background: #d4edda; color: #155724; }
         .alert-error { background: #f8d7da; color: #721c24; }
         .loading { text-align: center; padding: 30px; color: #666; }
+       
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -94,9 +96,9 @@
             <h3>Контактная информация</h3>
             <form id="agent-form">
                 <div class="form-group"><label>Имя</label><input type="text" id="agent-name"></div>
-                <div class="form-group"><label>Роль</label><input type="text" id="agent-role"></div>
-                <div class="form-group"><label>Телефон</label><input type="text" id="agent-phone"></div>
-                <div class="form-group"><label>Telegram</label><input type="text" id="agent-telegram"></div>                <div class="form-group"><label>Агентство</label><input type="text" id="agent-agency"></div>
+                <div class="form-group"><label>Роль</label><input type="text" id="agent-role"></div>                <div class="form-group"><label>Телефон</label><input type="text" id="agent-phone"></div>
+                <div class="form-group"><label>Telegram</label><input type="text" id="agent-telegram"></div>
+                <div class="form-group"><label>Агентство</label><input type="text" id="agent-agency"></div>
                 <button type="button" class="btn btn-success" onclick="saveAgentData()">Сохранить контакты</button>
             </form>
         </div>
@@ -114,7 +116,7 @@
     <div id="tab-settings" class="tab-content">
         <div class="card">
             <h3>Информация о системе</h3>
-            <p>Версия: 2.0</p>
+            <p>Версия: 2.0.5</p>
             <p>Статус: ✅ Работает стабильно</p>
             <p>Загрузка фото: Cloudinary Signed Upload</p>
             <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
@@ -143,9 +145,9 @@
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
                         <option value="Бизнес">Бизнес</option>
-                        <option value="Премиум">Премиум</option>
-                    </select>
-                </div>                <div class="form-group"><label>Статус</label>
+                        <option value="Премиум">Премиум</option>                    </select>
+                </div>
+                <div class="form-group"><label>Статус</label>
                     <select id="prop-status">
                         <option value="Строится">Строится</option>
                         <option value="Сдан">Сдан</option>
@@ -184,28 +186,41 @@
     </div>
 
     <script>
+        // === ВЕРСИОНИРОВАНИЕ (из кода сменщика) ===
+        const APP_VERSION = '2.0.5';
+        (function checkVersion() {
+            const storedVersion = localStorage.getItem('admin_app_version');
+            if (storedVersion !== APP_VERSION) {
+                console.log('🔄 Обновление версии:', storedVersion, '->', APP_VERSION);
+                localStorage.setItem('admin_app_version', APP_VERSION);
+                if ('caches' in window) {
+                    caches.keys().then(names => names.forEach(name => caches.delete(name)));                }
+                setTimeout(() => window.location.reload(true), 100);
+            }
+        })();
+
         // === КОНФИГУРАЦИЯ ===
         const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
        
-        // Безопасная инициализация Telegram (НЕ блокирует рендеринг!)
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-                if (tg) {                     try {
-                        tg.expand();
-                        tg.ready();
-                    } catch(e) {
-                        console.log('Telegram WebApp init error:', e);
-                    }
-                }
-            }, 100);
-        });
+        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
+       
+        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+        if (tg) {
+            try {
+                tg.expand();
+                tg.ready();
+                console.log('✅ Telegram WebApp initialized');
+            } catch(e) {
+                console.log('⚠️ Telegram WebApp init error:', e);
+            }
+        }
 
         let selectedFiles = { main: null, gallery: [], plans: [] };
 
+        // === НАВИГАЦИЯ ===
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -223,28 +238,49 @@
             setTimeout(() => el.classList.remove('show'), 4000);
         }
 
+        // === ВАЛИДАЦИЯ ФОТО (из кода сменщика) ===
+        function validatePhoto(file) {
+            const maxSize = 10 * 1024 * 1024; // 10 MB
+            if (file.size > maxSize) {
+                throw new Error(`Файл слишком большой (${(file.size/1024/1024).toFixed(1)} MB). Максимум 10 MB`);
+            }        }
+
+        // === ОБЪЕКТЫ (PROPERTIES) ===
         async function loadProperties() {
+            console.log('📥 Loading properties...');
             const list = document.getElementById('properties-list');
             list.innerHTML = 'Загрузка...';
-            const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
-            if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
            
-            if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Нет объектов</p>'; return; }
-           
-            list.innerHTML = data.map(p => `
-                <div class="card">
-                    <h3>${p.name || 'Без названия'}</h3>
-                    <p>📍 ${p.address || 'Адрес не указан'}</p>
-                    <p>💰 ${p.price_from ? `${p.price_from} - ${p.price_to} руб.` : 'Цена не указана'}</p>
-                    ${p.image_main ? `<img src="${p.image_main}" alt="Фото">` : ''}
-                    <div class="actions">
-                        <button class="btn btn-sm ${p.active !== false ? 'btn-secondary' : 'btn-success'}" onclick="toggleProperty('${p.id}', ${p.active !== false})">
-                            ${p.active !== false ? 'Скрыть' : 'Показать'}
-                        </button>
-                        <button class="btn btn-sm btn-primary" onclick="editProperty('${p.id}')">Ред.</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteProperty('${p.id}')">Удалить</button>
-                    </div>                </div>
-            `).join('');
+            try {
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+               
+                console.log('✅ Загружено объектов:', data?.length || 0);
+               
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:#999;">Нет объектов</p>';
+                    return;
+                }
+               
+                list.innerHTML = data.map(p => `
+                    <div class="card">
+                        <h3>${p.name || 'Без названия'}</h3>
+                        <p>📍 ${p.address || 'Адрес не указан'}</p>
+                        <p>💰 ${p.price_from ? `${p.price_from} - ${p.price_to} руб.` : 'Цена не указана'}</p>
+                        ${p.image_main ? `<img src="${p.image_main}" alt="Фото">` : ''}
+                        <div class="actions">
+                            <button class="btn btn-sm ${p.active !== false ? 'btn-secondary' : 'btn-success'}" onclick="toggleProperty('${p.id}', ${p.active !== false})">
+                                ${p.active !== false ? 'Скрыть' : 'Показать'}
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="editProperty('${p.id}')">Ред.</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteProperty('${p.id}')">Удалить</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('❌ Ошибка загрузки:', error);
+                list.innerHTML = `<p style="text-align:center;color:#dc3545;">Ошибка: ${error.message}</p>`;
+            }
         }
 
         function openPropertyModal() {
@@ -257,12 +293,12 @@
             document.getElementById('plan-preview').innerHTML = '';
             document.getElementById('property-modal').classList.add('active');
         }
-
         function closePropertyModal() {
             document.getElementById('property-modal').classList.remove('active');
         }
 
         async function editProperty(id) {
+            console.log('✏️ Редактирование:', id);
             const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
             if (error) return alert('Ошибка: ' + error.message);
            
@@ -291,29 +327,45 @@
 
         function previewPhoto(input, previewId) {
             const file = input.files[0];
-            if (file) {
-                selectedFiles.main = file;                const reader = new FileReader();
+            if (!file) return;
+           
+            try {
+                validatePhoto(file);
+                selectedFiles.main = file;
+                const reader = new FileReader();
                 reader.onload = e => document.getElementById(previewId).innerHTML = `<img src="${e.target.result}">`;
                 reader.readAsDataURL(file);
+                console.log('✅ Главное фото выбрано:', file.name);
+            } catch (err) {
+                showAlert('❌ ' + err.message, 'error');
+                input.value = '';
             }
         }
-
         function previewPhotos(input, previewId) {
             const files = Array.from(input.files);
             files.forEach(f => {
-                if (previewId === 'gallery-preview') selectedFiles.gallery.push(f);
-                else selectedFiles.plans.push(f);
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    document.getElementById(previewId).appendChild(img);
-                };
-                reader.readAsDataURL(f);
+                try {
+                    validatePhoto(f);
+                    if (previewId === 'gallery-preview') selectedFiles.gallery.push(f);
+                    else selectedFiles.plans.push(f);
+                   
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        document.getElementById(previewId).appendChild(img);
+                    };
+                    reader.readAsDataURL(f);
+                    console.log('✅ Фото добавлено:', f.name);
+                } catch (err) {
+                    showAlert('❌ ' + f.name + ': ' + err.message, 'error');
+                }
             });
         }
 
+        // === ЗАГРУЗКА ФОТО В CLOUDINARY ===
         async function uploadToCloudinary(file, objectId) {
+            console.log('☁️ Загрузка в Cloudinary:', file.name);
             const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
                 p_admin_id: ADMIN_USER_ID,
                 p_object_id: objectId
@@ -335,13 +387,19 @@
                 const e = await res.json();
                 throw new Error('Cloudinary: ' + e.error.message);
             }
-            return await res.json();
+            const result = await res.json();
+            console.log('✅ Загружено:', result.secure_url);
+            return result;
         }
-
+        // === СОХРАНЕНИЕ ОБЪЕКТА ===
         document.getElementById('property-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('💾 Сохранение объекта...');
+           
             const btn = document.getElementById('save-prop-btn');
-            const origText = btn.textContent;            btn.disabled = true; btn.textContent = 'Сохранение...';
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
             showAlert('alert-props', 'Загрузка фото и сохранение...', 'success');
 
             try {
@@ -375,12 +433,17 @@
                     }
                     if (selectedFiles.gallery.length) {
                         const urls = [];
-                        for (const f of selectedFiles.gallery) { const r = await uploadToCloudinary(f, objectId); urls.push(r.secure_url); }
+                        for (const f of selectedFiles.gallery) {
+                            const r = await uploadToCloudinary(f, objectId);
+                            urls.push(r.secure_url);
+                        }
                         data.images_gallery = urls.join(',');
                     }
-                    if (selectedFiles.plans.length) {
-                        const urls = [];
-                        for (const f of selectedFiles.plans) { const r = await uploadToCloudinary(f, objectId); urls.push(r.secure_url); }
+                    if (selectedFiles.plans.length) {                        const urls = [];
+                        for (const f of selectedFiles.plans) {
+                            const r = await uploadToCloudinary(f, objectId);
+                            urls.push(r.secure_url);
+                        }
                         data.floor_plans_images = urls.join(',');
                     }
                 }
@@ -390,20 +453,23 @@
                     if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {
                         delete data.image_main; delete data.images_gallery; delete data.floor_plans_images;
                     }
-                    result = await db.from('properties').update(data).eq('id', propId);                } else {
+                    result = await db.from('properties').update(data).eq('id', propId);
+                } else {
                     data.created_at = new Date().toISOString();
                     result = await db.from('properties').insert([data]);
                 }
 
                 if (result.error) throw result.error;
+                console.log('✅ Объект сохранён');
                 showAlert('alert-props', propId ? 'Объект обновлён!' : 'Объект создан!', 'success');
                 closePropertyModal();
                 loadProperties();
             } catch (err) {
+                console.error('❌ Ошибка:', err);
                 showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
-                console.error(err);
             } finally {
-                btn.disabled = false; btn.textContent = origText;
+                btn.disabled = false;
+                btn.textContent = origText;
             }
         });
 
@@ -414,15 +480,15 @@
         }
 
         async function deleteProperty(id) {
-            if (!confirm('Удалить объект? Это действие нельзя отменить.')) return;
+            if (!confirm('Удалить объект?')) return;
             const { error } = await db.from('properties').delete().eq('id', id);
             if (error) return alert('Ошибка: ' + error.message);
             loadProperties();
         }
 
+        // === ЗАЯВКИ (LEADS) ===
         async function loadLeads() {
-            const list = document.getElementById('leads-list');
-            list.innerHTML = 'Загрузка...';
+            const list = document.getElementById('leads-list');            list.innerHTML = 'Загрузка...';
             const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
             if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
             if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
@@ -437,9 +503,11 @@
             `).join('');
         }
 
+        // === ДАННЫЕ АГЕНТА ===
         async function loadAgentData() {
             const { data: agentData, error: agentError } = await db
-                .from('agent_data')                .select('*')
+                .from('agent_data')
+                .select('*')
                 .eq('owner_id', ADMIN_USER_ID)
                 .single();
            
@@ -469,8 +537,7 @@
         }
 
         async function saveAgentData() {
-            const data = {
-                owner_id: ADMIN_USER_ID,
+            const data = {                owner_id: ADMIN_USER_ID,
                 name: document.getElementById('agent-name').value,
                 role: document.getElementById('agent-role').value,
                 phone: document.getElementById('agent-phone').value,
@@ -486,9 +553,7 @@
 
         async function saveAboutPage() {
             const plainText = document.getElementById('about-content').value;
-           
-            const htmlContent = plainText
-                .split('\n').join('<br>')                .replace(/•/g, '•');
+            const htmlContent = plainText.split('\n').join('<br>');
            
             const { error } = await db
                 .from('pages')
@@ -502,10 +567,8 @@
             showAlert('alert-agent', 'Текст обновлён!', 'success');
         }
 
-        // Инициализация - показываем контент СРАЗУ
-        document.addEventListener('DOMContentLoaded', function() {
-            loadProperties();
-        });
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        document.addEventListener('DOMContentLoaded', loadProperties);
     </script>
 </body>
 </html>
