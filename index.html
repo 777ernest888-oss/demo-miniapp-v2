@@ -9,11 +9,9 @@
    
     <title>Админка Недвижимости v2</title>
    
-    <!-- ВНЕШНЯЯ ЗАГРУЗКА TELEGRAM SDK (не inline!) -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-   
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ВНЕШНЯЯ ЗАГРУЗКА С ВЕРСИЕЙ (для очистки кэша) -->
+    <script src="https://telegram.org/js/telegram-web-app.js?v=2.0.11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=2.0.11"></script>
    
     <style>
         :root {
@@ -47,9 +45,9 @@
         .btn-primary { background: var(--primary); color: white; width: 100%; margin-bottom: 15px; padding: 14px; font-size: 16px; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
-        .btn-secondary { background: var(--secondary); color: white; }        .btn-sm { padding: 6px 10px; font-size: 12px; }
-        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-        .actions .btn { flex: 1; }
+        .btn-secondary { background: var(--secondary); color: white; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }        .actions .btn { flex: 1; }
 
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
@@ -78,7 +76,7 @@
 </head>
 <body>
 
-    <div class="header">🏢 Админка v2</div>
+    <div class="header"> Админка v2</div>
    
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('properties')">Объекты</button>
@@ -97,8 +95,8 @@
         <div id="alert-leads" class="alert"></div>
         <div id="leads-list" class="loading">Загрузка заявок...</div>
     </div>
-    <div id="tab-agent" class="tab-content">
-        <div id="alert-agent" class="alert"></div>
+
+    <div id="tab-agent" class="tab-content">        <div id="alert-agent" class="alert"></div>
        
         <div class="card">
             <h3>Контактная информация</h3>
@@ -145,9 +143,9 @@
                 <div class="form-group"><label>Адрес *</label><input type="text" id="prop-address" required></div>
                 <div class="form-group"><label>Район</label><input type="text" id="prop-district"></div>
                 <div class="form-group"><label>Метро</label><input type="text" id="prop-metro"></div>
-                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
-                <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
-                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
+                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>
+                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
+                <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
                 <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
                 <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
@@ -194,9 +192,9 @@
         </div>
     </div>
 
-    <script>        // === ВЕРСИОНИРОВАНИЕ ===
-        const APP_VERSION = '2.0.10';
-        document.getElementById('app-version-display').textContent = APP_VERSION;
+    <script>
+        // === ВЕРСИОНИРОВАНИЕ ===
+        const APP_VERSION = '2.0.11';        document.getElementById('app-version-display').textContent = APP_VERSION;
        
         (function checkVersion() {
             try {
@@ -243,8 +241,8 @@
         } catch(e) {
             console.error('❌ Supabase init error:', e);
         }
-        let selectedFiles = { main: null, gallery: [], plans: [] };
 
+        let selectedFiles = { main: null, gallery: [], plans: [] };
         // === НАВИГАЦИЯ ===
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
@@ -282,7 +280,7 @@
                 if (error) throw error;
                
                 if (!data || data.length === 0) {
-                    list.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">⚠️ Нет объектов</p>';
+                    list.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">️ Нет объектов</p>';
                     return;
                 }
                
@@ -292,9 +290,9 @@
                         '<p>📍 ' + (p.address || 'Адрес не указан') + '</p>' +
                         '<p>💰 ' + (p.price_from ? p.price_from + ' - ' + p.price_to + ' руб.' : 'Цена не указана') + '</p>' +
                         (p.image_main ? '<img src="' + p.image_main + '" alt="Фото">' : '') +
-                        '<div class="actions">' +                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
-                                (p.active !== false ? 'Скрыть' : 'Показать') +
-                            '</button>' +
+                        '<div class="actions">' +
+                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
+                                (p.active !== false ? 'Скрыть' : 'Показать') +                            '</button>' +
                             '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
                             '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\')">Удалить</button>' +
                         '</div>' +
@@ -341,9 +339,9 @@
             document.getElementById('prop-description').value = p.description || '';
             document.getElementById('modal-title').textContent = 'Редактировать';
            
-            selectedFiles = { main: null, gallery: [], plans: [] };            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
-            document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
-            document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
+            selectedFiles = { main: null, gallery: [], plans: [] };
+            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
+            document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';            document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
            
             document.getElementById('property-modal').classList.add('active');
         }
@@ -382,7 +380,7 @@
                     };
                     reader.readAsDataURL(f);
                 } catch (err) {
-                    showAlert('❌ ' + f.name + ': ' + err.message, 'error');
+                    showAlert(' ' + f.name + ': ' + err.message, 'error');
                 }
             });
         }
@@ -390,9 +388,9 @@
         async function uploadToCloudinary(file, objectId) {
             const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
                 p_admin_id: ADMIN_USER_ID,
-                p_object_id: objectId             });
-            if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
-           
+                p_object_id: objectId
+            });
+            if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);           
             const fd = new FormData();
             fd.append('file', file);
             fd.append('api_key', sig.api_key);
@@ -439,9 +437,9 @@
                     status: document.getElementById('prop-status').value,
                     description: document.getElementById('prop-description').value || null,
                     image_main: null,
-                    images_gallery: '',                    floor_plans_images: '',
-                    active: true
-                };
+                    images_gallery: '',
+                    floor_plans_images: '',
+                    active: true                };
 
                 if (selectedFiles.main || selectedFiles.gallery.length || selectedFiles.plans.length) {
                     if (selectedFiles.main) {
@@ -488,9 +486,9 @@
                 btn.textContent = origText;
             }
         });
+
         async function toggleProperty(id, currentStatus) {
-            const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
-            if (error) return alert('Ошибка: ' + error.message);
+            const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);            if (error) return alert('Ошибка: ' + error.message);
             loadProperties();
         }
 
@@ -537,9 +535,9 @@
                 .from('pages')
                 .select('content')
                 .eq('page_key', 'about')
-                .single();           
-            if (pageData && pageData.content) {
-                const cleanText = pageData.content
+                .single();
+           
+            if (pageData && pageData.content) {                const cleanText = pageData.content
                     .replace(/<br\s*\/?>/gi, '\n')
                     .replace(/<b>/gi, '')
                     .replace(/<\/b>/gi, '')
