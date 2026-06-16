@@ -436,7 +436,7 @@
 
         // === ДАННЫЕ АГЕНТА ===
         async function loadAgentData() {
-            const { data, error } = await db.from('agent_data').select('*').eq('user_id', ADMIN_USER_ID).single();
+            const { data, error } = await db.from('agent_data').select('*').eq('owner_id', ADMIN_USER_ID).single();
             if (error && error.code !== 'PGRST116') return; // PGRST116 = не найдено, это ок
             if (data) {
                 document.getElementById('agent-name').value = data.name || '';                document.getElementById('agent-phone').value = data.phone || '';
