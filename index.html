@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- МЕТА-ТЕГИ ДЛЯ ОТКЛЮЧЕНИЯ КЭША -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+   
     <title>Админка Недвижимости v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram SDK загружается АСИНХРОННО в конце body -->
     <style>
         :root {
             --primary: #007bff;
@@ -42,12 +47,12 @@
         .btn-sm { padding: 6px 10px; font-size: 12px; }
         .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .actions .btn { flex: 1; }
-
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
         .form-group textarea { resize: vertical; min-height: 80px; }
-                .photo-upload { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 10px; background: #fafafa; }
+       
+        .photo-upload { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 10px; background: #fafafa; }
         .photo-upload input[type="file"] { width: 100%; }
         .photo-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
         .photo-preview img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
@@ -91,12 +96,12 @@
 
     <div id="tab-agent" class="tab-content">
         <div id="alert-agent" class="alert"></div>
-       
-        <div class="card">
+                <div class="card">
             <h3>Контактная информация</h3>
             <form id="agent-form">
                 <div class="form-group"><label>Имя</label><input type="text" id="agent-name"></div>
-                <div class="form-group"><label>Роль</label><input type="text" id="agent-role"></div>                <div class="form-group"><label>Телефон</label><input type="text" id="agent-phone"></div>
+                <div class="form-group"><label>Роль</label><input type="text" id="agent-role"></div>
+                <div class="form-group"><label>Телефон</label><input type="text" id="agent-phone"></div>
                 <div class="form-group"><label>Telegram</label><input type="text" id="agent-telegram"></div>
                 <div class="form-group"><label>Агентство</label><input type="text" id="agent-agency"></div>
                 <button type="button" class="btn btn-success" onclick="saveAgentData()">Сохранить контакты</button>
@@ -116,7 +121,7 @@
     <div id="tab-settings" class="tab-content">
         <div class="card">
             <h3>Информация о системе</h3>
-            <p>Версия: 2.0.5</p>
+            <p>Версия: 2.0.6</p>
             <p>Статус: ✅ Работает стабильно</p>
             <p>Загрузка фото: Cloudinary Signed Upload</p>
             <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
@@ -140,12 +145,12 @@
                 <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
                 <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
                 <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
-                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
-                <div class="form-group"><label>Класс</label>
+                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>                <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
                         <option value="Бизнес">Бизнес</option>
-                        <option value="Премиум">Премиум</option>                    </select>
+                        <option value="Премиум">Премиум</option>
+                    </select>
                 </div>
                 <div class="form-group"><label>Статус</label>
                     <select id="prop-status">
@@ -186,16 +191,15 @@
     </div>
 
     <script>
-        // === ВЕРСИОНИРОВАНИЕ (из кода сменщика) ===
-        const APP_VERSION = '2.0.5';
+        // === ВЕРСИОНИРОВАНИЕ ===
+        const APP_VERSION = '2.0.6';
         (function checkVersion() {
-            const storedVersion = localStorage.getItem('admin_app_version');
-            if (storedVersion !== APP_VERSION) {
+            const storedVersion = localStorage.getItem('admin_app_version');            if (storedVersion !== APP_VERSION) {
                 console.log('🔄 Обновление версии:', storedVersion, '->', APP_VERSION);
                 localStorage.setItem('admin_app_version', APP_VERSION);
                 if ('caches' in window) {
-                    caches.keys().then(names => names.forEach(name => caches.delete(name)));                }
-                setTimeout(() => window.location.reload(true), 100);
+                    caches.keys().then(names => names.forEach(name => caches.delete(name)));
+                }
             }
         })();
 
@@ -206,17 +210,6 @@
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
        
         console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
-       
-        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-        if (tg) {
-            try {
-                tg.expand();
-                tg.ready();
-                console.log('✅ Telegram WebApp initialized');
-            } catch(e) {
-                console.log('⚠️ Telegram WebApp init error:', e);
-            }
-        }
 
         let selectedFiles = { main: null, gallery: [], plans: [] };
 
@@ -238,21 +231,19 @@
             setTimeout(() => el.classList.remove('show'), 4000);
         }
 
-        // === ВАЛИДАЦИЯ ФОТО (из кода сменщика) ===
         function validatePhoto(file) {
-            const maxSize = 10 * 1024 * 1024; // 10 MB
+            const maxSize = 10 * 1024 * 1024;
             if (file.size > maxSize) {
                 throw new Error(`Файл слишком большой (${(file.size/1024/1024).toFixed(1)} MB). Максимум 10 MB`);
-            }        }
+            }
+        }
 
-        // === ОБЪЕКТЫ (PROPERTIES) ===
         async function loadProperties() {
             console.log('📥 Loading properties...');
             const list = document.getElementById('properties-list');
             list.innerHTML = 'Загрузка...';
            
-            try {
-                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+            try {                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                
                 console.log('✅ Загружено объектов:', data?.length || 0);
@@ -293,6 +284,7 @@
             document.getElementById('plan-preview').innerHTML = '';
             document.getElementById('property-modal').classList.add('active');
         }
+
         function closePropertyModal() {
             document.getElementById('property-modal').classList.remove('active');
         }
@@ -300,8 +292,7 @@
         async function editProperty(id) {
             console.log('✏️ Редактирование:', id);
             const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
-            if (error) return alert('Ошибка: ' + error.message);
-           
+            if (error) return alert('Ошибка: ' + error.message);           
             document.getElementById('prop-id').value = p.id;
             document.getElementById('prop-name').value = p.name || '';
             document.getElementById('prop-address').value = p.address || '';
@@ -341,6 +332,7 @@
                 input.value = '';
             }
         }
+
         function previewPhotos(input, previewId) {
             const files = Array.from(input.files);
             files.forEach(f => {
@@ -349,8 +341,7 @@
                     if (previewId === 'gallery-preview') selectedFiles.gallery.push(f);
                     else selectedFiles.plans.push(f);
                    
-                    const reader = new FileReader();
-                    reader.onload = e => {
+                    const reader = new FileReader();                    reader.onload = e => {
                         const img = document.createElement('img');
                         img.src = e.target.result;
                         document.getElementById(previewId).appendChild(img);
@@ -363,7 +354,6 @@
             });
         }
 
-        // === ЗАГРУЗКА ФОТО В CLOUDINARY ===
         async function uploadToCloudinary(file, objectId) {
             console.log('☁️ Загрузка в Cloudinary:', file.name);
             const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
@@ -391,7 +381,7 @@
             console.log('✅ Загружено:', result.secure_url);
             return result;
         }
-        // === СОХРАНЕНИЕ ОБЪЕКТА ===
+
         document.getElementById('property-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('💾 Сохранение объекта...');
@@ -401,7 +391,6 @@
             btn.disabled = true;
             btn.textContent = 'Сохранение...';
             showAlert('alert-props', 'Загрузка фото и сохранение...', 'success');
-
             try {
                 const propId = document.getElementById('prop-id').value;
                 const objectId = propId || 'obj_' + Date.now();
@@ -439,7 +428,8 @@
                         }
                         data.images_gallery = urls.join(',');
                     }
-                    if (selectedFiles.plans.length) {                        const urls = [];
+                    if (selectedFiles.plans.length) {
+                        const urls = [];
                         for (const f of selectedFiles.plans) {
                             const r = await uploadToCloudinary(f, objectId);
                             urls.push(r.secure_url);
@@ -449,8 +439,7 @@
                 }
 
                 let result;
-                if (propId) {
-                    if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {
+                if (propId) {                    if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {
                         delete data.image_main; delete data.images_gallery; delete data.floor_plans_images;
                     }
                     result = await db.from('properties').update(data).eq('id', propId);
@@ -486,9 +475,9 @@
             loadProperties();
         }
 
-        // === ЗАЯВКИ (LEADS) ===
         async function loadLeads() {
-            const list = document.getElementById('leads-list');            list.innerHTML = 'Загрузка...';
+            const list = document.getElementById('leads-list');
+            list.innerHTML = 'Загрузка...';
             const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
             if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
             if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
@@ -499,11 +488,9 @@
                     <p>📞 ${l.phone || 'Телефон не указан'}</p>
                     <p>💬 ${l.message || 'Сообщение пустое'}</p>
                     <p style="font-size:12px;color:#999;">${new Date(l.created_at).toLocaleString()}</p>
-                </div>
-            `).join('');
+                </div>            `).join('');
         }
 
-        // === ДАННЫЕ АГЕНТА ===
         async function loadAgentData() {
             const { data: agentData, error: agentError } = await db
                 .from('agent_data')
@@ -537,7 +524,8 @@
         }
 
         async function saveAgentData() {
-            const data = {                owner_id: ADMIN_USER_ID,
+            const data = {
+                owner_id: ADMIN_USER_ID,
                 name: document.getElementById('agent-name').value,
                 role: document.getElementById('agent-role').value,
                 phone: document.getElementById('agent-phone').value,
@@ -550,7 +538,6 @@
             if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
             showAlert('alert-agent', 'Контакты сохранены!', 'success');
         }
-
         async function saveAboutPage() {
             const plainText = document.getElementById('about-content').value;
             const htmlContent = plainText.split('\n').join('<br>');
@@ -569,6 +556,31 @@
 
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', loadProperties);
+    </script>
+   
+    <!-- Telegram SDK загружается ПОСЛЕ всего контента, асинхронно -->
+    <script>
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://telegram.org/js/telegram-web-app.js';
+            script.async = true;
+            script.onload = function() {
+                console.log('✅ Telegram SDK loaded');
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        window.Telegram.WebApp.expand();
+                        window.Telegram.WebApp.ready();
+                        console.log('✅ Telegram WebApp initialized');
+                    } catch(e) {
+                        console.log('⚠️ Telegram init error:', e);
+                    }
+                }
+            };
+            script.onerror = function() {
+                console.log('⚠️ Telegram SDK failed to load (non-critical)');
+            };
+            document.body.appendChild(script);
+        })();
     </script>
 </body>
 </html>
