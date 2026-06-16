@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админка Недвижимости v2</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -48,9 +45,9 @@
         <button class="btn btn-primary" onclick="showAddForm()" style="margin-bottom: 20px;">➕ Добавить объект</button>
         <div id="propertiesList" class="loading">Загрузка объектов...</div>
     </div>
+
     <div id="propertyModal" class="modal">
-        <div class="modal-content">
-            <h2 id="modalTitle">Новый объект</h2>
+        <div class="modal-content">            <h2 id="modalTitle">Новый объект</h2>
             <form id="propertyForm">
                 <input type="hidden" id="propertyId">
                 <div class="form-group"><label>Название ЖК *</label><input type="text" id="propName" required></div>
@@ -77,30 +74,60 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
+        // ВЕРСИЯ ПРИЛОЖЕНИЯ - меняй при каждом обновлении
+        const APP_VERSION = '2.0.2';
+       
+        // Проверка версии и принудительная перезагрузка
+        (function checkVersion() {
+            const storedVersion = localStorage.getItem('admin_app_version');
+            if (storedVersion !== APP_VERSION) {
+                console.log(`Обновление: ${storedVersion} -> ${APP_VERSION}`);
+                localStorage.setItem('admin_app_version', APP_VERSION);
+                // Очищаем кеш и перезагружаем
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                // Перезагрузка с добавлением timestamp для обхода кеша
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 100);
+            }
+        })();
+
+        const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';        const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
         let selectedPhotos = { main: null, gallery: [], plans: [] };
 
+        // Логирование для диагностики
+        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
+        console.log('Telegram WebApp:', tg ? 'available' : 'not available');
+
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('📄 DOM loaded');
             if (tg) {
                 tg.expand();
                 tg.ready();
+                console.log('✅ Telegram WebApp initialized');
             }
             await loadProperties();
         });
 
         async function loadProperties() {
+            console.log('📥 Loading properties...');
             const container = document.getElementById('propertiesList');
             container.innerHTML = '<div class="loading">Загрузка объектов...</div>';
            
-            try {                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+            try {
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
+                console.log('✅ Properties loaded:', data?.length || 0);
                 renderProperties(data || []);
             } catch (error) {
-                console.error('Ошибка загрузки:', error);
+                console.error('❌ Ошибка загрузки:', error);
                 let errorMsg = error.message;
                 if (error.message === 'Failed to fetch') {
                     errorMsg = 'Ошибка сети. Проверьте интернет-соединение и попробуйте снова.';
@@ -118,8 +145,7 @@
             }
             container.innerHTML = properties.map(prop => {
                 const gallery = prop.images_gallery ? prop.images_gallery.split(',').map(u => u.trim()).filter(u => u) : [];
-                const mainImg = prop.image_main || (gallery.length ? gallery[0] : null);
-                const isActive = prop.active !== false;
+                const mainImg = prop.image_main || (gallery.length ? gallery[0] : null);                const isActive = prop.active !== false;
                 const inactiveClass = isActive ? '' : ' inactive';
                
                 return `
@@ -145,7 +171,8 @@
             document.getElementById('propertyModal').classList.add('active');
         }
 
-        async function editProperty(id) {            const editBtn = document.getElementById(`edit-btn-${id}`);
+        async function editProperty(id) {
+            const editBtn = document.getElementById(`edit-btn-${id}`);
             const origText = editBtn.textContent;
             editBtn.disabled = true;
             editBtn.textContent = '⏳ Загрузка...';
@@ -167,8 +194,7 @@
                 document.getElementById('propClass').value = prop.class || 'Комфорт';
                 document.getElementById('propStatus').value = prop.status || 'Строится';
                 document.getElementById('propDescription').value = prop.description || '';
-                selectedPhotos = { main: null, gallery: [], plans: [] };
-                clearPhotoPreviews();
+                selectedPhotos = { main: null, gallery: [], plans: [] };                clearPhotoPreviews();
                 if (prop.image_main) {
                     document.getElementById('mainPhotoPreview').innerHTML = `<img src="${prop.image_main}">`;
                 }
@@ -194,7 +220,8 @@
             const f = e.target.files[0];
             if (!f) return;
             selectedPhotos.main = f;
-            const r = new FileReader();             r.onload = ev => document.getElementById('mainPhotoPreview').innerHTML = `<img src="${ev.target.result}">`;
+            const r = new FileReader();
+            r.onload = ev => document.getElementById('mainPhotoPreview').innerHTML = `<img src="${ev.target.result}">`;
             r.readAsDataURL(f);
         }
        
@@ -216,8 +243,7 @@
             Array.from(e.target.files).forEach(f => {
                 if (!f.type.startsWith('image/')) return;
                 selectedPhotos.plans.push(f);
-                const r = new FileReader();
-                r.onload = ev => {
+                const r = new FileReader();                 r.onload = ev => {
                     const i = document.createElement('img');
                     i.src = ev.target.result;
                     document.getElementById('plansPreview').appendChild(i);
@@ -243,7 +269,8 @@
             fd.append('folder', sig.folder);
            
             try {
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`, {                     method: 'POST',
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`, {
+                    method: 'POST',
                     body: fd
                 });
                 if (!res.ok) {
@@ -265,7 +292,6 @@
             const origText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ Сохранение...';
-
             try {
                 const propId = document.getElementById('propertyId').value;
                 const objId = propId || 'obj_' + Date.now();
@@ -292,7 +318,8 @@
 
                 if (selectedPhotos.main || selectedPhotos.gallery.length || selectedPhotos.plans.length) {
                     showAlert('📸 Загрузка фото...', 'success');
-                    if (selectedPhotos.main) {                        const r = await uploadToCloudinary(selectedPhotos.main, objId);
+                    if (selectedPhotos.main) {
+                        const r = await uploadToCloudinary(selectedPhotos.main, objId);
                         data.image_main = r.secure_url;
                     }
                     if (selectedPhotos.gallery.length) {
@@ -314,8 +341,7 @@
                 }
 
                 let result;
-                if (propId) {
-                    result = await db.from('properties').update(data).eq('id', propId);
+                if (propId) {                    result = await db.from('properties').update(data).eq('id', propId);
                 } else {
                     data.created_at = new Date().toISOString();
                     result = await db.from('properties').insert([data]);
@@ -341,7 +367,8 @@
         async function toggleProperty(id, currentActive) {
             const toggleBtn = document.getElementById(`toggle-btn-${id}`);
             const origText = toggleBtn.textContent;
-            const card = document.getElementById(`property-${id}`);           
+            const card = document.getElementById(`property-${id}`);
+           
             toggleBtn.disabled = true;
             toggleBtn.textContent = '⏳ ...';
            
@@ -349,7 +376,6 @@
                 const { error } = await db.from('properties').update({ active: !currentActive }).eq('id', id);
                 if (error) throw error;
                
-                // Обновляем визуально сразу
                 if (!currentActive) {
                     card.classList.remove('inactive');
                     toggleBtn.textContent = '🙈 Скрыть';
@@ -360,13 +386,11 @@
                     showAlert('🙈 Объект скрыт', 'success');
                 }
                
-                // Перезагружаем список для актуальности
                 await loadProperties();
             } catch (err) {
                 console.error('Ошибка переключения:', err);
                 let errorMsg = err.message;
-                if (err.message === 'Failed to fetch') {
-                    errorMsg = 'Ошибка сети. Проверьте интернет-соединение.';
+                if (err.message === 'Failed to fetch') {                    errorMsg = 'Ошибка сети. Проверьте интернет-соединение.';
                 }
                 showAlert('❌ Ошибка: ' + errorMsg, 'error');
             } finally {
@@ -389,8 +413,8 @@
                 const { error } = await db.from('properties').delete().eq('id', id);
                 if (error) throw error;
                
-                // Удаляем из DOM сразу
-                card.style.transition = 'opacity 0.3s, transform 0.3s';                card.style.opacity = '0';
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity = '0';
                 card.style.transform = 'translateX(-20px)';
                 setTimeout(() => card.remove(), 300);
                
@@ -415,8 +439,7 @@
             a.textContent = msg;
             c.appendChild(a);
             setTimeout(() => {
-                a.style.transition = 'opacity 0.3s';
-                a.style.opacity = '0';
+                a.style.transition = 'opacity 0.3s';                a.style.opacity = '0';
                 setTimeout(() => a.remove(), 300);
             }, 4000);
         }
