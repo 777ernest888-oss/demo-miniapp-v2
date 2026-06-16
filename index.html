@@ -9,7 +9,10 @@
    
     <title>Админка Недвижимости v2</title>
    
+    <!-- ВНЕШНЯЯ ЗАГРУЗКА TELEGRAM SDK (не inline!) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+   
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
    
     <style>
@@ -44,10 +47,10 @@
         .btn-primary { background: var(--primary); color: white; width: 100%; margin-bottom: 15px; padding: 14px; font-size: 16px; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
-        .btn-secondary { background: var(--secondary); color: white; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .btn-secondary { background: var(--secondary); color: white; }        .btn-sm { padding: 6px 10px; font-size: 12px; }
         .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .actions .btn { flex: 1; }
+
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
@@ -94,9 +97,9 @@
         <div id="alert-leads" class="alert"></div>
         <div id="leads-list" class="loading">Загрузка заявок...</div>
     </div>
-
     <div id="tab-agent" class="tab-content">
-        <div id="alert-agent" class="alert"></div>       
+        <div id="alert-agent" class="alert"></div>
+       
         <div class="card">
             <h3>Контактная информация</h3>
             <form id="agent-form">
@@ -142,10 +145,10 @@
                 <div class="form-group"><label>Адрес *</label><input type="text" id="prop-address" required></div>
                 <div class="form-group"><label>Район</label><input type="text" id="prop-district"></div>
                 <div class="form-group"><label>Метро</label><input type="text" id="prop-metro"></div>
-                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>
-                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
+                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
                 <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
-                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
+                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
+                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
                 <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
@@ -191,10 +194,10 @@
         </div>
     </div>
 
-    <script>
-        // === ВЕРСИОНИРОВАНИЕ ===
-        const APP_VERSION = '2.0.15';
-        document.getElementById('app-version-display').textContent = APP_VERSION;       
+    <script>        // === ВЕРСИОНИРОВАНИЕ ===
+        const APP_VERSION = '2.0.10';
+        document.getElementById('app-version-display').textContent = APP_VERSION;
+       
         (function checkVersion() {
             try {
                 const storedVersion = localStorage.getItem('admin_app_version');
@@ -240,10 +243,10 @@
         } catch(e) {
             console.error('❌ Supabase init error:', e);
         }
-
         let selectedFiles = { main: null, gallery: [], plans: [] };
 
-        // === НАВИГАЦИЯ ===        function switchTab(tabName) {
+        // === НАВИГАЦИЯ ===
+        function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
             document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
             document.getElementById('tab-' + tabName).classList.add('active');
@@ -288,20 +291,19 @@
                         '<h3>' + (p.name || 'Без названия') + '</h3>' +
                         '<p>📍 ' + (p.address || 'Адрес не указан') + '</p>' +
                         '<p>💰 ' + (p.price_from ? p.price_from + ' - ' + p.price_to + ' руб.' : 'Цена не указана') + '</p>' +
-                        (p.image_main ? '<img src="' + p.image_main + '" alt="Фото" loading="lazy">' : '') +
-                        '<div class="actions">' +
-                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ', this)">' +
+                        (p.image_main ? '<img src="' + p.image_main + '" alt="Фото">' : '') +
+                        '<div class="actions">' +                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
                                 (p.active !== false ? 'Скрыть' : 'Показать') +
-                            '</button>' +                            '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
-                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\', this)">Удалить</button>' +
+                            '</button>' +
+                            '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\')">Удалить</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
                
             } catch (error) {
                 console.error('❌ Ошибка загрузки:', error);
-                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>' +
-                    '<button class="btn btn-primary" onclick="loadProperties()" style="margin-top:15px;">🔄 Повторить</button>';
+                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>';
             }
         }
 
@@ -321,34 +323,29 @@
         }
 
         async function editProperty(id) {
-            console.log('✏️ Редактирование:', id);
-            try {
-                const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
-                if (error) throw error;
-               
-                document.getElementById('prop-id').value = p.id;
-                document.getElementById('prop-name').value = p.name || '';
-                document.getElementById('prop-address').value = p.address || '';
-                document.getElementById('prop-district').value = p.district || '';
-                document.getElementById('prop-metro').value = p.metro || '';
-                document.getElementById('prop-rooms').value = p.rooms || '';
-                document.getElementById('prop-area-min').value = p.area_min || '';
-                document.getElementById('prop-area-max').value = p.area_max || '';
-                document.getElementById('prop-price-from').value = p.price_from || '';
-                document.getElementById('prop-price-to').value = p.price_to || '';
-                document.getElementById('prop-class').value = p.class || 'Комфорт';
-                document.getElementById('prop-status').value = p.status || 'Строится';
-                document.getElementById('prop-description').value = p.description || '';
-                document.getElementById('modal-title').textContent = 'Редактировать';
-               
-                selectedFiles = { main: null, gallery: [], plans: [] };                document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
-                document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
-                document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
-               
-                document.getElementById('property-modal').classList.add('active');
-            } catch(e) {
-                alert('Ошибка редактирования: ' + e.message);
-            }
+            const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
+            if (error) return alert('Ошибка: ' + error.message);
+           
+            document.getElementById('prop-id').value = p.id;
+            document.getElementById('prop-name').value = p.name || '';
+            document.getElementById('prop-address').value = p.address || '';
+            document.getElementById('prop-district').value = p.district || '';
+            document.getElementById('prop-metro').value = p.metro || '';
+            document.getElementById('prop-rooms').value = p.rooms || '';
+            document.getElementById('prop-area-min').value = p.area_min || '';
+            document.getElementById('prop-area-max').value = p.area_max || '';
+            document.getElementById('prop-price-from').value = p.price_from || '';
+            document.getElementById('prop-price-to').value = p.price_to || '';
+            document.getElementById('prop-class').value = p.class || 'Комфорт';
+            document.getElementById('prop-status').value = p.status || 'Строится';
+            document.getElementById('prop-description').value = p.description || '';
+            document.getElementById('modal-title').textContent = 'Редактировать';
+           
+            selectedFiles = { main: null, gallery: [], plans: [] };            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
+            document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
+            document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
+           
+            document.getElementById('property-modal').classList.add('active');
         }
 
         function previewPhoto(input, previewId) {
@@ -390,11 +387,10 @@
             });
         }
 
-        async function uploadToCloudinary(file, objectId) {            console.log('☁️ Загрузка в Cloudinary:', file.name);
+        async function uploadToCloudinary(file, objectId) {
             const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
                 p_admin_id: ADMIN_USER_ID,
-                p_object_id: objectId
-            });
+                p_object_id: objectId             });
             if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
            
             const fd = new FormData();
@@ -439,11 +435,11 @@
                     area_max: parseFloat(document.getElementById('prop-area-max').value) || null,
                     price_from: parseInt(document.getElementById('prop-price-from').value) || null,
                     price_to: parseInt(document.getElementById('prop-price-to').value) || null,
-                    class: document.getElementById('prop-class').value,                    status: document.getElementById('prop-status').value,
+                    class: document.getElementById('prop-class').value,
+                    status: document.getElementById('prop-status').value,
                     description: document.getElementById('prop-description').value || null,
                     image_main: null,
-                    images_gallery: '',
-                    floor_plans_images: '',
+                    images_gallery: '',                    floor_plans_images: '',
                     active: true
                 };
 
@@ -486,111 +482,70 @@
                 closePropertyModal();
                 loadProperties();
             } catch (err) {
-                console.error('❌ Ошибка:', err);
                 showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
-            } finally {                btn.disabled = false;
+            } finally {
+                btn.disabled = false;
                 btn.textContent = origText;
             }
         });
-
-        async function toggleProperty(id, currentStatus, btn) {
-            console.log('👁 Переключение:', id, currentStatus);
-            if (!btn) return;
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ ...';
-           
-            try {
-                const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
-                if (error) throw error;
-               
-                setTimeout(function() { loadProperties(); }, 500);
-            } catch(e) {
-                console.error('❌ Ошибка:', e);
-                alert('Ошибка: ' + e.message);
-                loadProperties();
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
+        async function toggleProperty(id, currentStatus) {
+            const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
         }
 
-        async function deleteProperty(id, btn) {
+        async function deleteProperty(id) {
             if (!confirm('Удалить объект?')) return;
-           
-            console.log('🗑 Удаление:', id);
-            if (!btn) return;
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ ...';
-           
-            try {
-                const { error } = await db.from('properties').delete().eq('id', id);
-                if (error) throw error;
-               
-                setTimeout(function() { loadProperties(); }, 500);
-            } catch(e) {
-                console.error('❌ Ошибка:', e);
-                alert('Ошибка: ' + e.message);
-                loadProperties();
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
+            const { error } = await db.from('properties').delete().eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
         }
+
         async function loadLeads() {
             const list = document.getElementById('leads-list');
             list.innerHTML = 'Загрузка...';
-            try {
-                const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
-                if (error) throw error;
-                if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
-               
-                list.innerHTML = data.map(function(l) {
-                    return '<div class="card">' +
-                        '<h3>' + (l.name || 'Аноним') + '</h3>' +
-                        '<p>📞 ' + (l.phone || 'Телефон не указан') + '</p>' +
-                        '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +
-                        '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
-                    '</div>';
-                }).join('');
-            } catch(e) {
-                list.innerHTML = '<p style="text-align:center;color:#dc3545;">Ошибка: ' + e.message + '</p>';
-            }
+            const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
+            if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
+            if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
+           
+            list.innerHTML = data.map(function(l) {
+                return '<div class="card">' +
+                    '<h3>' + (l.name || 'Аноним') + '</h3>' +
+                    '<p>📞 ' + (l.phone || 'Телефон не указан') + '</p>' +
+                    '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +
+                    '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
+                '</div>';
+            }).join('');
         }
 
         async function loadAgentData() {
-            try {
-                const { data: agentData, error: agentError } = await db
-                    .from('agent_data')
-                    .select('*')
-                    .eq('owner_id', ADMIN_USER_ID)
-                    .single();
+            const { data: agentData, error: agentError } = await db
+                .from('agent_data')
+                .select('*')
+                .eq('owner_id', ADMIN_USER_ID)
+                .single();
+           
+            if (agentData) {
+                document.getElementById('agent-name').value = agentData.name || '';
+                document.getElementById('agent-role').value = agentData.role || '';
+                document.getElementById('agent-phone').value = agentData.phone || '';
+                document.getElementById('agent-telegram').value = agentData.telegram_username || '';
+                document.getElementById('agent-agency').value = agentData.agency_name || '';
+            }
+           
+            const { data: pageData, error: pageError } = await db
+                .from('pages')
+                .select('content')
+                .eq('page_key', 'about')
+                .single();           
+            if (pageData && pageData.content) {
+                const cleanText = pageData.content
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<b>/gi, '')
+                    .replace(/<\/b>/gi, '')
+                    .replace(/<[^>]*>/g, '');
                
-                if (agentData) {
-                    document.getElementById('agent-name').value = agentData.name || '';
-                    document.getElementById('agent-role').value = agentData.role || '';
-                    document.getElementById('agent-phone').value = agentData.phone || '';
-                    document.getElementById('agent-telegram').value = agentData.telegram_username || '';
-                    document.getElementById('agent-agency').value = agentData.agency_name || '';
-                }
-               
-                const { data: pageData, error: pageError } = await db
-                    .from('pages')
-                    .select('content')
-                    .eq('page_key', 'about')
-                    .single();
-               
-                if (pageData && pageData.content) {
-                    const cleanText = pageData.content
-                        .replace(/<br\s*\/?>/gi, '\n')
-                        .replace(/<b>/gi, '')
-                        .replace(/<\/b>/gi, '')
-                        .replace(/<[^>]*>/g, '');                   
-                    document.getElementById('about-content').value = cleanText;
-                }
-            } catch(e) {
-                console.error('Ошибка загрузки данных агента:', e);
+                document.getElementById('about-content').value = cleanText;
             }
         }
 
@@ -605,36 +560,29 @@
                 updated_at: new Date().toISOString()
             };
            
-            try {
-                const { error } = await db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
-                if (error) throw error;
-                showAlert('alert-agent', 'Контакты сохранены!', 'success');
-            } catch(e) {
-                showAlert('alert-agent', 'Ошибка: ' + e.message, 'error');
-            }
+            const { error } = await db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
+            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
+            showAlert('alert-agent', 'Контакты сохранены!', 'success');
         }
 
         async function saveAboutPage() {
             const plainText = document.getElementById('about-content').value;
             const htmlContent = plainText.split('\n').join('<br>');
            
-            try {
-                const { error } = await db
-                    .from('pages')
-                    .update({
-                        content: htmlContent,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('page_key', 'about');
-               
-                if (error) throw error;
-                showAlert('alert-agent', 'Текст обновлён!', 'success');
-            } catch(e) {
-                showAlert('alert-agent', 'Ошибка: ' + e.message, 'error');
-            }
+            const { error } = await db
+                .from('pages')
+                .update({
+                    content: htmlContent,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('page_key', 'about');
+           
+            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
+            showAlert('alert-agent', 'Текст обновлён!', 'success');
         }
 
         // === ИНИЦИАЛИЗАЦИЯ ===
-        document.addEventListener('DOMContentLoaded', loadProperties);    </script>
+        document.addEventListener('DOMContentLoaded', loadProperties);
+    </script>
 </body>
 </html>
