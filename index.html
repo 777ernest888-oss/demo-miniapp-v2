@@ -193,7 +193,7 @@
 
     <script>
         // === ВЕРСИОНИРОВАНИЕ ===
-        const APP_VERSION = '2.0.13';
+        const APP_VERSION = '2.0.14';
         document.getElementById('app-version-display').textContent = APP_VERSION;       
         (function checkVersion() {
             try {
@@ -217,7 +217,7 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
        
-        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
+        console.log(' Admin App v' + APP_VERSION + ' starting...');
 
         // === ИНИЦИАЛИЗАЦИЯ TELEGRAM ===
         let tg = null;
@@ -232,22 +232,18 @@
             console.log('⚠️ Telegram init error:', e.message);
         }
 
-        // === ИНИЦИАЛИЗАЦИЯ SUPABASE С ТАЙМАУТОМ ===
+        // === ИНИЦИАЛИЗАЦИЯ SUPABASE ===
         let db;
         try {
-            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                global: {
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            });
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log('✅ Supabase initialized');
         } catch(e) {
             console.error('❌ Supabase init error:', e);
         }
+
         let selectedFiles = { main: null, gallery: [], plans: [] };
 
-        // === НАВИГАЦИЯ ===
-        function switchTab(tabName) {
+        // === НАВИГАЦИЯ ===        function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
             document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
             document.getElementById('tab-' + tabName).classList.add('active');
@@ -271,18 +267,14 @@
             }
         }
 
-        // === ЗАГРУЗКА ОБЪЕКТОВ С ТАЙМАУТОМ ===
+        // === ЗАГРУЗКА ОБЪЕКТОВ ===
         async function loadProperties() {
             console.log('📥 Loading properties...');
             const list = document.getElementById('properties-list');
             list.innerHTML = '<p style="text-align:center;padding:30px;color:#666;">⏳ Загрузка...</p>';
            
             try {
-                // Таймаут 10 секунд
-                const { data, error } = await Promise.race([
-                    db.from('properties').select('*').order('created_at', { ascending: false }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки (>10 сек)')), 10000))
-                ]);
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
                
                 if (error) throw error;
                
@@ -292,23 +284,23 @@
                 }
                
                 list.innerHTML = data.map(function(p) {
-                    return '<div class="card">' +                        '<h3>' + (p.name || 'Без названия') + '</h3>' +
+                    return '<div class="card">' +
+                        '<h3>' + (p.name || 'Без названия') + '</h3>' +
                         '<p>📍 ' + (p.address || 'Адрес не указан') + '</p>' +
                         '<p>💰 ' + (p.price_from ? p.price_from + ' - ' + p.price_to + ' руб.' : 'Цена не указана') + '</p>' +
                         (p.image_main ? '<img src="' + p.image_main + '" alt="Фото" loading="lazy">' : '') +
                         '<div class="actions">' +
-                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
+                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ', this)">' +
                                 (p.active !== false ? 'Скрыть' : 'Показать') +
-                            '</button>' +
-                            '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
-                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\')">Удалить</button>' +
+                            '</button>' +                            '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\', this)">Удалить</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
                
             } catch (error) {
                 console.error('❌ Ошибка загрузки:', error);
-                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>' +
+                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;"> Ошибка: ' + error.message + '</p>' +
                     '<button class="btn btn-primary" onclick="loadProperties()" style="margin-top:15px;">🔄 Повторить</button>';
             }
         }
@@ -331,17 +323,14 @@
         async function editProperty(id) {
             console.log('✏️ Редактирование:', id);
             try {
-                const { data: p, error } = await Promise.race([
-                    db.from('properties').select('*').eq('id', id).single(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
-               
+                const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
                 if (error) throw error;
                
                 document.getElementById('prop-id').value = p.id;
                 document.getElementById('prop-name').value = p.name || '';
                 document.getElementById('prop-address').value = p.address || '';
-                document.getElementById('prop-district').value = p.district || '';                document.getElementById('prop-metro').value = p.metro || '';
+                document.getElementById('prop-district').value = p.district || '';
+                document.getElementById('prop-metro').value = p.metro || '';
                 document.getElementById('prop-rooms').value = p.rooms || '';
                 document.getElementById('prop-area-min').value = p.area_min || '';
                 document.getElementById('prop-area-max').value = p.area_max || '';
@@ -352,8 +341,7 @@
                 document.getElementById('prop-description').value = p.description || '';
                 document.getElementById('modal-title').textContent = 'Редактировать';
                
-                selectedFiles = { main: null, gallery: [], plans: [] };
-                document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
+                selectedFiles = { main: null, gallery: [], plans: [] };                document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
                 document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
                 document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
                
@@ -390,7 +378,8 @@
                     else selectedFiles.plans.push(f);
                    
                     const reader = new FileReader();
-                    reader.onload = function(e) {                        const img = document.createElement('img');
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
                         img.src = e.target.result;
                         document.getElementById(previewId).appendChild(img);
                     };
@@ -401,16 +390,11 @@
             });
         }
 
-        async function uploadToCloudinary(file, objectId) {
-            console.log('☁️ Загрузка в Cloudinary:', file.name);
-            const { data: sig, error: sigErr } = await Promise.race([
-                db.rpc('get_cloudinary_signature', {
-                    p_admin_id: ADMIN_USER_ID,
-                    p_object_id: objectId
-                }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут получения подписи')), 10000))
-            ]);
-           
+        async function uploadToCloudinary(file, objectId) {            console.log('☁️ Загрузка в Cloudinary:', file.name);
+            const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
+                p_admin_id: ADMIN_USER_ID,
+                p_object_id: objectId
+            });
             if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
            
             const fd = new FormData();
@@ -439,6 +423,7 @@
             btn.disabled = true;
             btn.textContent = 'Сохранение...';
             showAlert('alert-props', 'Загрузка фото...', 'success');
+
             try {
                 const propId = document.getElementById('prop-id').value;
                 const objectId = propId || 'obj_' + Date.now();
@@ -454,8 +439,7 @@
                     area_max: parseFloat(document.getElementById('prop-area-max').value) || null,
                     price_from: parseInt(document.getElementById('prop-price-from').value) || null,
                     price_to: parseInt(document.getElementById('prop-price-to').value) || null,
-                    class: document.getElementById('prop-class').value,
-                    status: document.getElementById('prop-status').value,
+                    class: document.getElementById('prop-class').value,                    status: document.getElementById('prop-status').value,
                     description: document.getElementById('prop-description').value || null,
                     image_main: null,
                     images_gallery: '',
@@ -488,18 +472,13 @@
 
                 let result;
                 if (propId) {
-                    if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {                        delete data.image_main; delete data.images_gallery; delete data.floor_plans_images;
+                    if (!selectedFiles.main && !selectedFiles.gallery.length && !selectedFiles.plans.length) {
+                        delete data.image_main; delete data.images_gallery; delete data.floor_plans_images;
                     }
-                    result = await Promise.race([
-                        db.from('properties').update(data).eq('id', propId),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут сохранения (>15 сек)')), 15000))
-                    ]);
+                    result = await db.from('properties').update(data).eq('id', propId);
                 } else {
                     data.created_at = new Date().toISOString();
-                    result = await Promise.race([
-                        db.from('properties').insert([data]),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут создания (>15 сек)')), 15000))
-                    ]);
+                    result = await db.from('properties').insert([data]);
                 }
 
                 if (result.error) throw result.error;
@@ -509,56 +488,22 @@
             } catch (err) {
                 console.error('❌ Ошибка:', err);
                 showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
-            } finally {
-                btn.disabled = false;
+            } finally {                btn.disabled = false;
                 btn.textContent = origText;
             }
         });
 
-        async function toggleProperty(id, currentStatus) {
+        async function toggleProperty(id, currentStatus, btn) {
             console.log('👁 Переключение:', id, currentStatus);
-            const btn = event.target;
             const origText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = '⏳ ...';
+            btn.textContent = ' ...';
            
             try {
-                const result = await Promise.race([
-                    db.from('properties').update({ active: !currentStatus }).eq('id', id),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
+                const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
+                if (error) throw error;
                
-                if (result.error) throw result.error;
-               
-                // Принудительная перезагрузка списка
-                setTimeout(loadProperties, 500);
-            } catch(e) {
-                console.error('❌ Ошибка:', e);
-                alert('Ошибка: ' + e.message);
-                loadProperties(); // Перезагрузить список
-            } finally {
-                btn.disabled = false;                btn.textContent = origText;
-            }
-        }
-
-        async function deleteProperty(id) {
-            if (!confirm('Удалить объект?')) return;
-           
-            console.log('🗑 Удаление:', id);
-            const btn = event.target;
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ ...';
-           
-            try {
-                const result = await Promise.race([
-                    db.from('properties').delete().eq('id', id),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
-               
-                if (result.error) throw result.error;
-               
-                // Принудительная перезагрузка
+                // Принудительная перезагрузка через 500мс
                 setTimeout(loadProperties, 500);
             } catch(e) {
                 console.error('❌ Ошибка:', e);
@@ -570,15 +515,34 @@
             }
         }
 
+        async function deleteProperty(id, btn) {
+            if (!confirm('Удалить объект?')) return;
+           
+            console.log('🗑 Удаление:', id);
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ ...';
+           
+            try {
+                const { error } = await db.from('properties').delete().eq('id', id);
+                if (error) throw error;
+               
+                // Принудительная перезагрузка через 500мс
+                setTimeout(loadProperties, 500);
+            } catch(e) {
+                console.error('❌ Ошибка:', e);
+                alert('Ошибка: ' + e.message);
+                loadProperties();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
         async function loadLeads() {
             const list = document.getElementById('leads-list');
             list.innerHTML = 'Загрузка...';
             try {
-                const { data, error } = await Promise.race([
-                    db.from('leads').select('*').order('created_at', { ascending: false }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
-               
+                const { data, error } = await db.from('leads').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
                
@@ -586,7 +550,8 @@
                     return '<div class="card">' +
                         '<h3>' + (l.name || 'Аноним') + '</h3>' +
                         '<p>📞 ' + (l.phone || 'Телефон не указан') + '</p>' +
-                        '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +                        '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
+                        '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +
+                        '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
                     '</div>';
                 }).join('');
             } catch(e) {
@@ -596,10 +561,11 @@
 
         async function loadAgentData() {
             try {
-                const { data: agentData, error: agentError } = await Promise.race([
-                    db.from('agent_data').select('*').eq('owner_id', ADMIN_USER_ID).single(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
+                const { data: agentData, error: agentError } = await db
+                    .from('agent_data')
+                    .select('*')
+                    .eq('owner_id', ADMIN_USER_ID)
+                    .single();
                
                 if (agentData) {
                     document.getElementById('agent-name').value = agentData.name || '';
@@ -609,18 +575,18 @@
                     document.getElementById('agent-agency').value = agentData.agency_name || '';
                 }
                
-                const { data: pageData, error: pageError } = await Promise.race([
-                    db.from('pages').select('content').eq('page_key', 'about').single(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
+                const { data: pageData, error: pageError } = await db
+                    .from('pages')
+                    .select('content')
+                    .eq('page_key', 'about')
+                    .single();
                
                 if (pageData && pageData.content) {
                     const cleanText = pageData.content
                         .replace(/<br\s*\/?>/gi, '\n')
                         .replace(/<b>/gi, '')
                         .replace(/<\/b>/gi, '')
-                        .replace(/<[^>]*>/g, '');
-                   
+                        .replace(/<[^>]*>/g, '');                   
                     document.getElementById('about-content').value = cleanText;
                 }
             } catch(e) {
@@ -635,15 +601,12 @@
                 role: document.getElementById('agent-role').value,
                 phone: document.getElementById('agent-phone').value,
                 telegram_username: document.getElementById('agent-telegram').value,
-                agency_name: document.getElementById('agent-agency').value,                updated_at: new Date().toISOString()
+                agency_name: document.getElementById('agent-agency').value,
+                updated_at: new Date().toISOString()
             };
            
             try {
-                const { error } = await Promise.race([
-                    db.from('agent_data').upsert(data, { onConflict: 'owner_id' }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
-               
+                const { error } = await db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
                 if (error) throw error;
                 showAlert('alert-agent', 'Контакты сохранены!', 'success');
             } catch(e) {
@@ -656,13 +619,13 @@
             const htmlContent = plainText.split('\n').join('<br>');
            
             try {
-                const { error } = await Promise.race([
-                    db.from('pages').update({
+                const { error } = await db
+                    .from('pages')
+                    .update({
                         content: htmlContent,
                         updated_at: new Date().toISOString()
-                    }).eq('page_key', 'about'),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут (>10 сек)')), 10000))
-                ]);
+                    })
+                    .eq('page_key', 'about');
                
                 if (error) throw error;
                 showAlert('alert-agent', 'Текст обновлён!', 'success');
@@ -672,7 +635,6 @@
         }
 
         // === ИНИЦИАЛИЗАЦИЯ ===
-        document.addEventListener('DOMContentLoaded', loadProperties);
-    </script>
+        document.addEventListener('DOMContentLoaded', loadProperties);    </script>
 </body>
 </html>
