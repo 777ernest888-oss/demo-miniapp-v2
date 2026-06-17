@@ -68,14 +68,35 @@
         .alert.show { display: block; }
         .alert-success { background: #d4edda; color: #155724; }
         .alert-error { background: #f8d7da; color: #721c24; }
-        .loading { text-align: center; padding: 30px; color: #666; }
+       
+        /* НОВЫЙ СТИЛЬ ДЛЯ ЛОГОВ */
+        #debug-log {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.9);
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            z-index: 99999;
+            display: none;
+        }
+        #debug-log.show { display: block; }
+        #debug-log .error { color: #ff0000; }
+        #debug-log .warn { color: #ffff00; }
        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div class="header">🏢 Админка v2</div>
+    <!-- ЛОГГЕР ОШИБОК -->
+    <div id="debug-log"></div>
+    <div class="header"> Админка v2</div>
    
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('properties', this)">Объекты</button>
@@ -87,16 +108,21 @@
     <div id="tab-properties" class="tab-content active">
         <div id="alert-props" class="alert"></div>
         <button class="btn btn-primary" onclick="openPropertyModal()">+ Добавить объект</button>
-        <div id="properties-list" class="loading">Загрузка...</div>
+        <div id="properties-list">
+            <p style="text-align:center;color:#666;">Загрузка...</p>
+        </div>
     </div>
 
     <div id="tab-leads" class="tab-content">
         <div id="alert-leads" class="alert"></div>
-        <div id="leads-list" class="loading">Загрузка заявок...</div>
+        <div id="leads-list">
+            <p style="text-align:center;color:#666;">Загрузка заявок...</p>
+        </div>
     </div>
 
     <div id="tab-agent" class="tab-content">
-        <div id="alert-agent" class="alert"></div>       
+        <div id="alert-agent" class="alert"></div>
+       
         <div class="card">
             <h3>Контактная информация</h3>
             <form id="agent-form">
@@ -119,8 +145,7 @@
         </div>
     </div>
 
-    <div id="tab-settings" class="tab-content">
-        <div class="card">
+    <div id="tab-settings" class="tab-content">        <div class="card">
             <h3>Информация о системе</h3>
             <p>Версия: <span id="app-version-display">—</span></p>
             <p>Статус: ✅ Работает стабильно</p>
@@ -145,7 +170,8 @@
                 <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>
                 <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
                 <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
-                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
+                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
+                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
                 <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
@@ -168,8 +194,7 @@
                         <div id="main-preview" class="photo-preview"></div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Галерея</label>
+                <div class="form-group">                    <label>Галерея</label>
                     <div class="photo-upload">
                         <input type="file" id="gallery-photos" accept="image/*" multiple onchange="previewPhotos(this, 'gallery-preview')">
                         <div id="gallery-preview" class="photo-preview"></div>
@@ -192,20 +217,56 @@
     </div>
 
     <script>
-        const APP_VERSION = '2.0.23';
+        const APP_VERSION = '2.0.24';
        
-        window.addEventListener('load', function() {            console.log('✅ Window load event fired');
+        // === ЛОГГЕР ОШИБОК В DOM ===
+        function logToScreen(message, type = 'info') {
+            const log = document.getElementById('debug-log');
+            if (!log) return;
+           
+            log.classList.add('show');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+           
+            console.log('[' + type + '] ' + message);
+        }
+
+        // Перехват ошибок
+        window.onerror = function(msg, url, line, col, error) {
+            logToScreen('JS Error: ' + msg + ' (line ' + line + ')', 'error');
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            logToScreen('Promise Error: ' + event.reason, 'error');
+        });
+        logToScreen('Script started');
+
+        // === ТАЙМАУТ НА ЗАГРУЗКУ ===
+        setTimeout(function() {
+            if (!window.db) {
+                logToScreen('TIMEOUT: Supabase не инициализирован за 10 секунд!', 'error');
+                document.getElementById('properties-list').innerHTML =
+                    '<p style="color:red;text-align:center;">⏰ Таймаут загрузки (10 сек)<br>Обновите страницу</p>';
+            }
+        }, 10000);
+       
+        window.addEventListener('load', function() {
+            logToScreen('Window load event fired');
             initApp();
         });
 
         function initApp() {
-            console.log('🚀 Initializing app v' + APP_VERSION);
+            logToScreen('Initializing app v' + APP_VERSION);
             document.getElementById('app-version-display').textContent = APP_VERSION;
            
             try {
                 const storedVersion = localStorage.getItem('admin_app_version');
                 if (storedVersion !== APP_VERSION) {
-                    console.log('🔄 Обновление версии:', storedVersion, '->', APP_VERSION);
+                    logToScreen('Updating version: ' + storedVersion + ' -> ' + APP_VERSION);
                     localStorage.setItem('admin_app_version', APP_VERSION);
                     if ('caches' in window) {
                         caches.keys().then(function(names) {
@@ -214,7 +275,7 @@
                     }
                 }
             } catch(e) {
-                console.log('⚠️ localStorage недоступен:', e.message);
+                logToScreen('localStorage error: ' + e.message, 'warn');
             }
 
             let tg = null;
@@ -223,14 +284,15 @@
                     tg = window.Telegram.WebApp;
                     tg.ready();
                     tg.expand();
-                    console.log('✅ Telegram WebApp initialized');
+                    logToScreen('Telegram WebApp initialized');
+                } else {
+                    logToScreen('Telegram WebApp not available', 'warn');
                 }
             } catch(e) {
-                console.log('⚠️ Telegram init error:', e.message);
+                logToScreen('Telegram init error: ' + e.message, 'error');
             }
 
-            let db;
-            try {
+            let db;            try {
                 if (!window.supabase) {
                     throw new Error('Supabase не загрузился');
                 }
@@ -239,11 +301,11 @@
                     'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX'
                 );
                 window.db = db;
-                console.log('✅ Supabase initialized');
+                logToScreen('Supabase initialized');
             } catch(e) {
-                console.error('❌ Supabase init error:', e);
-                alert('❌ Ошибка инициализации БД: ' + e.message);
-                document.getElementById('properties-list').innerHTML =                     '<p style="color:red;padding:20px;">Ошибка инициализации: ' + e.message + '</p>' +
+                logToScreen('Supabase init error: ' + e.message, 'error');
+                document.getElementById('properties-list').innerHTML =
+                    '<p style="color:red;padding:20px;">Ошибка инициализации: ' + e.message + '</p>' +
                     '<button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">🔄 Обновить</button>';
                 return;
             }
@@ -276,13 +338,12 @@
             };
 
             loadProperties();
-            console.log('✅ App initialized');
+            logToScreen('App initialized');
         }
 
-        async function loadProperties() {
-            console.log('📥 Loading properties...');
+        async function loadProperties() {            logToScreen('Loading properties...');
             const list = document.getElementById('properties-list');
-            list.innerHTML = 'Загрузка...';
+            list.innerHTML = '<p style="text-align:center;color:#666;">Загрузка...</p>';
            
             try {
                 if (!window.db) {
@@ -292,7 +353,8 @@
                 const { data, error } = await window.db.from('properties').select('*').order('created_at', { ascending: false });
                
                 if (error) throw error;
-                                if (!data || data.length === 0) {
+               
+                if (!data || data.length === 0) {
                     list.innerHTML = '<p style="text-align:center;color:#999;">Нет объектов</p>';
                     return;
                 }
@@ -313,10 +375,10 @@
                     '</div>';
                 }).join('');
                
-                console.log('✅ Properties loaded:', data.length);
+                logToScreen('Properties loaded: ' + data.length);
                
             } catch (error) {
-                console.error(' Ошибка загрузки:', error);
+                logToScreen('Load error: ' + error.message, 'error');
                 list.innerHTML = '<p style="text-align:center;color:#dc3545;">Ошибка: ' + error.message + '</p>' +
                     '<button class="btn btn-primary" onclick="loadProperties()" style="margin-top:15px;">🔄 Повторить</button>';
             }
@@ -328,8 +390,7 @@
             document.getElementById('modal-title').textContent = 'Новый объект';
             window.selectedFiles = { main: null, gallery: [], plans: [] };
             document.getElementById('main-preview').innerHTML = '';
-            document.getElementById('gallery-preview').innerHTML = '';
-            document.getElementById('plan-preview').innerHTML = '';
+            document.getElementById('gallery-preview').innerHTML = '';            document.getElementById('plan-preview').innerHTML = '';
             document.getElementById('property-modal').classList.add('active');
         }
 
@@ -338,10 +399,9 @@
         }
 
         async function editProperty(id) {
-            console.log('✏️ Редактирование:', id);
+            logToScreen('Editing: ' + id);
             try {
-                if (!window.db) {
-                    throw new Error('База данных не инициализирована');                }
+                if (!window.db) throw new Error('База данных не инициализирована');
                
                 const { data: p, error } = await window.db.from('properties').select('*').eq('id', id).single();
                 if (error) throw error;
@@ -368,7 +428,8 @@
                
                 document.getElementById('property-modal').classList.add('active');
             } catch(e) {
-                alert('❌ Ошибка редактирования: ' + e.message);
+                logToScreen('Edit error: ' + e.message, 'error');
+                alert('Ошибка редактирования: ' + e.message);
             }
         }
 
@@ -378,19 +439,19 @@
            
             try {
                 validatePhoto(file);
-                window.selectedFiles.main = file;
-                const reader = new FileReader();
+                window.selectedFiles.main = file;                const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById(previewId).innerHTML = '<img src="' + e.target.result + '">';
                 };
                 reader.readAsDataURL(file);
             } catch (err) {
-                alert('❌ Ошибка фото: ' + err.message);
+                logToScreen('Photo error: ' + err.message, 'error');
                 input.value = '';
             }
         }
 
-        function previewPhotos(input, previewId) {            const files = Array.from(input.files);
+        function previewPhotos(input, previewId) {
+            const files = Array.from(input.files);
             files.forEach(function(f) {
                 try {
                     validatePhoto(f);
@@ -405,43 +466,34 @@
                     };
                     reader.readAsDataURL(f);
                 } catch (err) {
-                    alert('❌ Ошибка фото ' + f.name + ': ' + err.message);
+                    logToScreen('Photo error ' + f.name + ': ' + err.message, 'error');
                 }
             });
         }
 
         async function uploadToCloudinary(file, objectId) {
-            console.log('☁️ Загрузка в Cloudinary:', file.name);
-            if (!window.db) {
-                throw new Error('База данных не инициализирована');
-            }
+            logToScreen('Uploading to Cloudinary: ' + file.name);
+            if (!window.db) throw new Error('База данных не инициализирована');
            
             try {
-                console.log('📡 Запрос подписи Cloudinary...');
                 const { data: sig, error: sigErr } = await window.db.rpc('get_cloudinary_signature', {
                     p_admin_id: window.ADMIN_USER_ID,
                     p_object_id: objectId
                 });
                
                 if (sigErr) {
-                    alert('❌ Ошибка получения подписи Cloudinary:\n\nКод: ' + sigErr.code + '\nСообщение: ' + sigErr.message + '\nДетали: ' + JSON.stringify(sigErr.details || ''));
+                    logToScreen('Cloudinary signature error: ' + sigErr.message, 'error');
                     throw new Error('Ошибка подписи: ' + sigErr.message);
                 }
                
-                if (!sig) {
-                    alert('❌ Подпись Cloudinary не получена (data = null)');
-                    throw new Error('Подпись не получена');
-                }
+                if (!sig) throw new Error('Подпись не получена');
                
-                console.log('✅ Подпись получена:', sig);
-               
-                const fd = new FormData();
-                fd.append('file', file);
+                const fd = new FormData();                fd.append('file', file);
                 fd.append('api_key', sig.api_key);
                 fd.append('timestamp', sig.timestamp);
-                fd.append('signature', sig.signature);                fd.append('folder', sig.folder);
+                fd.append('signature', sig.signature);
+                fd.append('folder', sig.folder);
                
-                console.log('📤 Отправка в Cloudinary...');
                 const res = await fetch('https://api.cloudinary.com/v1_1/' + sig.cloud_name + '/image/upload', {
                     method: 'POST',
                     body: fd
@@ -449,15 +501,14 @@
                
                 if (!res.ok) {
                     const e = await res.json();
-                    alert('❌ Ошибка Cloudinary API:\n\nСтатус: ' + res.status + '\nСообщение: ' + (e.error ? e.error.message : 'неизвестно'));
                     throw new Error('Cloudinary: ' + (e.error ? e.error.message : res.status));
                 }
                
                 const result = await res.json();
-                console.log('✅ Загружено:', result.secure_url);
+                logToScreen('Uploaded: ' + result.secure_url);
                 return result;
             } catch (err) {
-                console.error('❌ uploadToCloudinary error:', err);
+                logToScreen('uploadToCloudinary error: ' + err.message, 'error');
                 throw err;
             }
         }
@@ -465,36 +516,28 @@
         document.getElementById('property-form').addEventListener('submit', async function(e) {
             e.preventDefault();
            
-            console.log('🔍 Форма отправлена');
-            console.log('🔍 window.db:', window.db ? 'OK' : 'NULL');
+            logToScreen('Form submitted');
            
             const btn = document.getElementById('save-prop-btn');
             const origText = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Сохранение...';
-            showAlert('alert-props', 'Начинаем сохранение...', 'success');
 
             try {
-                if (!window.db) {
-                    alert('❌ База данных не инициализирована!\n\nОбновите страницу.');
-                    throw new Error('База данных не инициализирована');
-                }
-               
-                console.log('✅ window.db найден');
+                if (!window.db) throw new Error('База данных не инициализирована');
                
                 const propId = document.getElementById('prop-id').value;
                 const objectId = propId || 'obj_' + Date.now();
-                console.log('📝 ID объекта:', objectId);
 
                 const data = {
                     id: objectId,
-                    name: document.getElementById('prop-name').value,                    address: document.getElementById('prop-address').value,
+                    name: document.getElementById('prop-name').value,
+                    address: document.getElementById('prop-address').value,
                     district: document.getElementById('prop-district').value || null,
                     metro: document.getElementById('prop-metro').value || null,
                     rooms: document.getElementById('prop-rooms').value || null,
                     area_min: parseFloat(document.getElementById('prop-area-min').value) || null,
-                    area_max: parseFloat(document.getElementById('prop-area-max').value) || null,
-                    price_from: parseInt(document.getElementById('prop-price-from').value) || null,
+                    area_max: parseFloat(document.getElementById('prop-area-max').value) || null,                    price_from: parseInt(document.getElementById('prop-price-from').value) || null,
                     price_to: parseInt(document.getElementById('prop-price-to').value) || null,
                     class: document.getElementById('prop-class').value,
                     status: document.getElementById('prop-status').value,
@@ -505,45 +548,31 @@
                     active: true
                 };
 
-                console.log('📦 Данные объекта:', data);
-
                 if (window.selectedFiles.main || window.selectedFiles.gallery.length || window.selectedFiles.plans.length) {
-                    console.log('📸 Начинаем загрузку фото...');
-                   
                     if (window.selectedFiles.main) {
-                        console.log('📸 Загрузка главного фото...');
                         const r = await uploadToCloudinary(window.selectedFiles.main, objectId);
                         data.image_main = r.secure_url;
-                        console.log('✅ Главное фото загружено');
                     }
-                   
                     if (window.selectedFiles.gallery.length) {
-                        console.log('📸 Загрузка галереи:', window.selectedFiles.gallery.length, 'файлов');
                         const urls = [];
                         for (const f of window.selectedFiles.gallery) {
                             const r = await uploadToCloudinary(f, objectId);
                             urls.push(r.secure_url);
                         }
                         data.images_gallery = urls.join(',');
-                        console.log('✅ Галерея загружена');
                     }
-                   
                     if (window.selectedFiles.plans.length) {
-                        console.log('📸 Загрузка планировок:', window.selectedFiles.plans.length, 'файлов');
                         const urls = [];
                         for (const f of window.selectedFiles.plans) {
                             const r = await uploadToCloudinary(f, objectId);
                             urls.push(r.secure_url);
                         }
                         data.floor_plans_images = urls.join(',');
-                        console.log('✅ Планировки загружены');
-                    }                } else {
-                    console.log('📸 Фото не выбраны');
+                    }
                 }
 
                 let result;
                 if (propId) {
-                    console.log('️ Обновление объекта:', propId);
                     if (!window.selectedFiles.main && !window.selectedFiles.gallery.length && !window.selectedFiles.plans.length) {
                         delete data.image_main;
                         delete data.images_gallery;
@@ -551,25 +580,17 @@
                     }
                     result = await window.db.from('properties').update(data).eq('id', propId);
                 } else {
-                    console.log('➕ Создание нового объекта');
                     data.created_at = new Date().toISOString();
                     result = await window.db.from('properties').insert([data]);
                 }
 
-                console.log('📊 Результат Supabase:', result);
-
-                if (result.error) {
-                    alert('❌ Ошибка Supabase:\n\nКод: ' + result.error.code + '\nСообщение: ' + result.error.message + '\nДетали: ' + JSON.stringify(result.error.details || ''));
-                    throw result.error;
-                }
+                if (result.error) throw result.error;
                
-                showAlert('alert-props', propId ? 'Объект обновлён!' : 'Объект создан!', 'success');
-                closePropertyModal();
+                logToScreen('Object saved: ' + (propId ? 'updated' : 'created'));                closePropertyModal();
                 loadProperties();
             } catch (err) {
-                console.error('❌ Ошибка сохранения:', err);
-                alert('❌ Ошибка при сохранении объекта:\n\n' + err.message + '\n\nТип: ' + (err.constructor ? err.constructor.name : 'unknown'));
-                showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
+                logToScreen('Save error: ' + err.message, 'error');
+                alert('Ошибка: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = origText;
@@ -577,23 +598,19 @@
         });
 
         async function toggleProperty(id, currentStatus, btn) {
-            console.log('👁 Переключение:', id, currentStatus);
-            if (!window.db) {
-                alert('База данных не инициализирована');
-                return;
-            }
+            logToScreen('Toggle: ' + id);
+            if (!window.db) return;
            
             const origText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ ...';
-                        try {
+           
+            try {
                 const { error } = await window.db.from('properties').update({ active: !currentStatus }).eq('id', id);
                 if (error) throw error;
-               
                 setTimeout(function() { loadProperties(); }, 500);
             } catch(e) {
-                console.error('❌ Ошибка:', e);
-                alert('Ошибка: ' + e.message);
+                logToScreen('Toggle error: ' + e.message, 'error');
                 loadProperties();
             } finally {
                 btn.disabled = false;
@@ -604,11 +621,8 @@
         async function deleteProperty(id, btn) {
             if (!confirm('Удалить объект?')) return;
            
-            console.log('🗑 Удаление:', id);
-            if (!window.db) {
-                alert('База данных не инициализирована');
-                return;
-            }
+            logToScreen('Delete: ' + id);
+            if (!window.db) return;
            
             const origText = btn.textContent;
             btn.disabled = true;
@@ -617,14 +631,11 @@
             try {
                 const { error } = await window.db.from('properties').delete().eq('id', id);
                 if (error) throw error;
-               
                 setTimeout(function() { loadProperties(); }, 500);
             } catch(e) {
-                console.error('❌ Ошибка:', e);
-                alert('Ошибка: ' + e.message);
+                logToScreen('Delete error: ' + e.message, 'error');
                 loadProperties();
-            } finally {
-                btn.disabled = false;
+            } finally {                btn.disabled = false;
                 btn.textContent = origText;
             }
         }
@@ -633,9 +644,8 @@
             const list = document.getElementById('leads-list');
             list.innerHTML = 'Загрузка...';
             try {
-                if (!window.db) {
-                    throw new Error('База данных не инициализирована');
-                }               
+                if (!window.db) throw new Error('База данных не инициализирована');
+               
                 const { data, error } = await window.db.from('leads').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 if (!data || data.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;">Заявок пока нет</p>'; return; }
@@ -649,15 +659,14 @@
                     '</div>';
                 }).join('');
             } catch(e) {
+                logToScreen('Load leads error: ' + e.message, 'error');
                 list.innerHTML = '<p style="text-align:center;color:#dc3545;">Ошибка: ' + e.message + '</p>';
             }
         }
 
         async function loadAgentData() {
             try {
-                if (!window.db) {
-                    throw new Error('База данных не инициализирована');
-                }
+                if (!window.db) throw new Error('База данных не инициализирована');
                
                 const { data: agentData, error: agentError } = await window.db
                     .from('agent_data')
@@ -675,8 +684,7 @@
                
                 const { data: pageData, error: pageError } = await window.db
                     .from('pages')
-                    .select('content')
-                    .eq('page_key', 'about')
+                    .select('content')                    .eq('page_key', 'about')
                     .single();
                
                 if (pageData && pageData.content) {
@@ -684,11 +692,12 @@
                         .replace(/<br\s*\/?>/gi, '\n')
                         .replace(/<b>/gi, '')
                         .replace(/<\/b>/gi, '')
-                        .replace(/<[^>]*>/g, '');                   
+                        .replace(/<[^>]*>/g, '');
+                   
                     document.getElementById('about-content').value = cleanText;
                 }
             } catch(e) {
-                console.error('Ошибка загрузки данных агента:', e);
+                logToScreen('Load agent error: ' + e.message, 'error');
             }
         }
 
@@ -704,15 +713,14 @@
             };
            
             try {
-                if (!window.db) {
-                    throw new Error('База данных не инициализирована');
-                }
+                if (!window.db) throw new Error('База данных не инициализирована');
                
                 const { error } = await window.db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
                 if (error) throw error;
+                logToScreen('Agent data saved');
                 showAlert('alert-agent', 'Контакты сохранены!', 'success');
             } catch(e) {
-                alert('❌ Ошибка сохранения контактов: ' + e.message);
+                logToScreen('Save agent error: ' + e.message, 'error');
                 showAlert('alert-agent', 'Ошибка: ' + e.message, 'error');
             }
         }
@@ -722,21 +730,20 @@
             const htmlContent = plainText.split('\n').join('<br>');
            
             try {
-                if (!window.db) {
-                    throw new Error('База данных не инициализирована');
-                }
+                if (!window.db) throw new Error('База данных не инициализирована');
                
                 const { error } = await window.db
-                    .from('pages')
-                    .update({
+                    .from('pages')                    .update({
                         content: htmlContent,
                         updated_at: new Date().toISOString()
                     })
                     .eq('page_key', 'about');
-                                if (error) throw error;
+               
+                if (error) throw error;
+                logToScreen('About page saved');
                 showAlert('alert-agent', 'Текст обновлён!', 'success');
             } catch(e) {
-                alert('❌ Ошибка сохранения текста: ' + e.message);
+                logToScreen('Save about error: ' + e.message, 'error');
                 showAlert('alert-agent', 'Ошибка: ' + e.message, 'error');
             }
         }
