@@ -9,12 +9,10 @@
    
     <title>Админка Недвижимости v2</title>
    
-    <!-- ЗАГРУЖАЕМ СКРИПТЫ С defer -->
     <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
    
     <style>
-        /* ... стили без изменений ... */
         :root {
             --primary: #007bff;
             --success: #28a745;
@@ -47,9 +45,9 @@
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-secondary { background: var(--secondary); color: white; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; }        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .actions .btn { flex: 1; }
-
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
@@ -96,9 +94,9 @@
         <div id="alert-leads" class="alert"></div>
         <div id="leads-list" class="loading">Загрузка заявок...</div>
     </div>
+
     <div id="tab-agent" class="tab-content">
-        <div id="alert-agent" class="alert"></div>
-       
+        <div id="alert-agent" class="alert"></div>       
         <div class="card">
             <h3>Контактная информация</h3>
             <form id="agent-form">
@@ -145,9 +143,9 @@
                 <div class="form-group"><label>Район</label><input type="text" id="prop-district"></div>
                 <div class="form-group"><label>Метро</label><input type="text" id="prop-metro"></div>
                 <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>
-                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>                <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
-                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
-                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
+                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
+                <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
+                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
                 <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
@@ -194,17 +192,14 @@
     </div>
 
     <script>
-        const APP_VERSION = '2.0.21';       
-        // === ЖДЁМ ЗАГРУЗКИ ВСЕХ СКРИПТОВ ===
-        window.addEventListener('load', function() {
-            console.log('✅ Window load event fired');
+        const APP_VERSION = '2.0.21';
+       
+        window.addEventListener('load', function() {            console.log('✅ Window load event fired');
             initApp();
         });
 
         function initApp() {
             console.log('🚀 Initializing app...');
-           
-            // Версионирование
             document.getElementById('app-version-display').textContent = APP_VERSION;
            
             try {
@@ -222,7 +217,6 @@
                 console.log('⚠️ localStorage недоступен:', e.message);
             }
 
-            // Инициализация Telegram
             let tg = null;
             try {
                 if (window.Telegram && window.Telegram.WebApp) {
@@ -235,7 +229,6 @@
                 console.log('⚠️ Telegram init error:', e.message);
             }
 
-            // Инициализация Supabase
             let db;
             try {
                 if (!window.supabase) {
@@ -243,21 +236,20 @@
                 }
                 db = window.supabase.createClient(
                     'https://rqiutnpawsmqvmzewamc.supabase.co',
-                    'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX'                );
-                window.db = db; // Делаем глобальным
+                    'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX'
+                );
+                window.db = db;
                 console.log('✅ Supabase initialized');
             } catch(e) {
                 console.error('❌ Supabase init error:', e);
                 document.getElementById('properties-list').innerHTML =
-                    '<p style="color:red;padding:20px;">Ошибка инициализации: ' + e.message + '</p>' +
-                    '<button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">🔄 Обновить</button>';
+                    '<p style="color:red;padding:20px;">Ошибка инициализации: ' + e.message + '</p>' +                    '<button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">🔄 Обновить</button>';
                 return;
             }
 
             window.ADMIN_USER_ID = '2038206387';
             window.selectedFiles = { main: null, gallery: [], plans: [] };
 
-            // Навигация
             window.switchTab = function(tabName, btn) {
                 document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
                 document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
@@ -282,17 +274,15 @@
                 }
             };
 
-            // Загрузка объектов
             loadProperties();
-           
             console.log('✅ App initialized');
         }
-
         async function loadProperties() {
             console.log('📥 Loading properties...');
             const list = document.getElementById('properties-list');
             list.innerHTML = 'Загрузка...';
-                        try {
+           
+            try {
                 if (!window.db) {
                     throw new Error('База данных не инициализирована');
                 }
@@ -336,11 +326,11 @@
             document.getElementById('prop-id').value = '';
             document.getElementById('modal-title').textContent = 'Новый объект';
             window.selectedFiles = { main: null, gallery: [], plans: [] };
-            document.getElementById('main-preview').innerHTML = '';
-            document.getElementById('gallery-preview').innerHTML = '';
+            document.getElementById('main-preview').innerHTML = '';            document.getElementById('gallery-preview').innerHTML = '';
             document.getElementById('plan-preview').innerHTML = '';
             document.getElementById('property-modal').classList.add('active');
         }
+
         function closePropertyModal() {
             document.getElementById('property-modal').classList.remove('active');
         }
@@ -385,12 +375,12 @@
             const file = input.files[0];
             if (!file) return;
            
-            try {
-                validatePhoto(file);
+            try {                validatePhoto(file);
                 window.selectedFiles.main = file;
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    document.getElementById(previewId).innerHTML = '<img src="' + e.target.result + '">';                 };
+                    document.getElementById(previewId).innerHTML = '<img src="' + e.target.result + '">';
+                };
                 reader.readAsDataURL(file);
             } catch (err) {
                 showAlert('❌ ' + err.message, 'error');
@@ -434,12 +424,12 @@
             const fd = new FormData();
             fd.append('file', file);
             fd.append('api_key', sig.api_key);
-            fd.append('timestamp', sig.timestamp);
-            fd.append('signature', sig.signature);
+            fd.append('timestamp', sig.timestamp);            fd.append('signature', sig.signature);
             fd.append('folder', sig.folder);
            
             const res = await fetch('https://api.cloudinary.com/v1_1/' + sig.cloud_name + '/image/upload', {
-                method: 'POST',                 body: fd
+                method: 'POST',
+                body: fd
             });
             if (!res.ok) {
                 const e = await res.json();
@@ -484,11 +474,11 @@
                     floor_plans_images: '',
                     active: true
                 };
-
                 if (window.selectedFiles.main || window.selectedFiles.gallery.length || window.selectedFiles.plans.length) {
                     if (window.selectedFiles.main) {
                         const r = await uploadToCloudinary(window.selectedFiles.main, objectId);
-                        data.image_main = r.secure_url;                    }
+                        data.image_main = r.secure_url;
+                    }
                     if (window.selectedFiles.gallery.length) {
                         const urls = [];
                         for (const f of window.selectedFiles.gallery) {
@@ -532,12 +522,12 @@
         });
 
         async function toggleProperty(id, currentStatus, btn) {
-            console.log('👁 Переключение:', id, currentStatus);
-            if (!window.db) {
+            console.log('👁 Переключение:', id, currentStatus);            if (!window.db) {
                 alert('База данных не инициализирована');
                 return;
             }
-                        const origText = btn.textContent;
+           
+            const origText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ ...';
            
@@ -581,12 +571,12 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = origText;
-            }
-        }
+            }        }
 
         async function loadLeads() {
             const list = document.getElementById('leads-list');
-            list.innerHTML = 'Загрузка...';            try {
+            list.innerHTML = 'Загрузка...';
+            try {
                 if (!window.db) {
                     throw new Error('База данных не инициализирована');
                 }
@@ -630,12 +620,12 @@
                
                 const { data: pageData, error: pageError } = await window.db
                     .from('pages')
-                    .select('content')
-                    .eq('page_key', 'about')
+                    .select('content')                    .eq('page_key', 'about')
                     .single();
                
                 if (pageData && pageData.content) {
-                    const cleanText = pageData.content                        .replace(/<br\s*\/?>/gi, '\n')
+                    const cleanText = pageData.content
+                        .replace(/<br\s*\/?>/gi, '\n')
                         .replace(/<b>/gi, '')
                         .replace(/<\/b>/gi, '')
                         .replace(/<[^>]*>/g, '');
@@ -679,12 +669,12 @@
                 if (!window.db) {
                     throw new Error('База данных не инициализирована');
                 }
-               
-                const { error } = await window.db
+                                const { error } = await window.db
                     .from('pages')
                     .update({
                         content: htmlContent,
-                        updated_at: new Date().toISOString()                     })
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('page_key', 'about');
                
                 if (error) throw error;
