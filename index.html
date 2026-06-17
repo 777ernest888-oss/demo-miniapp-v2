@@ -9,7 +9,10 @@
    
     <title>Админка Недвижимости v2</title>
    
+    <!-- ВНЕШНЯЯ ЗАГРУЗКА TELEGRAM SDK (не inline!) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+   
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
    
     <style>
@@ -44,10 +47,10 @@
         .btn-primary { background: var(--primary); color: white; width: 100%; margin-bottom: 15px; padding: 14px; font-size: 16px; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
-        .btn-secondary { background: var(--secondary); color: white; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .btn-secondary { background: var(--secondary); color: white; }        .btn-sm { padding: 6px 10px; font-size: 12px; }
         .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .actions .btn { flex: 1; }
+
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
@@ -94,9 +97,9 @@
         <div id="alert-leads" class="alert"></div>
         <div id="leads-list" class="loading">Загрузка заявок...</div>
     </div>
-
     <div id="tab-agent" class="tab-content">
-        <div id="alert-agent" class="alert"></div>       
+        <div id="alert-agent" class="alert"></div>
+       
         <div class="card">
             <h3>Контактная информация</h3>
             <form id="agent-form">
@@ -142,10 +145,10 @@
                 <div class="form-group"><label>Адрес *</label><input type="text" id="prop-address" required></div>
                 <div class="form-group"><label>Район</label><input type="text" id="prop-district"></div>
                 <div class="form-group"><label>Метро</label><input type="text" id="prop-metro"></div>
-                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>
-                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
+                <div class="form-group"><label>Комнат</label><input type="text" id="prop-rooms"></div>                <div class="form-group"><label>Площадь мин (м²)</label><input type="number" step="0.1" id="prop-area-min"></div>
                 <div class="form-group"><label>Площадь макс (м²)</label><input type="number" step="0.1" id="prop-area-max"></div>
-                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
+                <div class="form-group"><label>Цена от (руб)</label><input type="number" id="prop-price-from"></div>
+                <div class="form-group"><label>Цена до (руб)</label><input type="number" id="prop-price-to"></div>
                 <div class="form-group"><label>Класс</label>
                     <select id="prop-class">
                         <option value="Комфорт">Комфорт</option>
@@ -191,14 +194,15 @@
         </div>
     </div>
 
-    <script>
-        const APP_VERSION = '2.0.17';
+    <script>        // === ВЕРСИОНИРОВАНИЕ ===
+        const APP_VERSION = '2.0.10';
         document.getElementById('app-version-display').textContent = APP_VERSION;
-                (function checkVersion() {
+       
+        (function checkVersion() {
             try {
                 const storedVersion = localStorage.getItem('admin_app_version');
                 if (storedVersion !== APP_VERSION) {
-                    console.log('Обновление версии:', storedVersion, '->', APP_VERSION);
+                    console.log('🔄 Обновление версии:', storedVersion, '->', APP_VERSION);
                     localStorage.setItem('admin_app_version', APP_VERSION);
                     if ('caches' in window) {
                         caches.keys().then(function(names) {
@@ -207,52 +211,47 @@
                     }
                 }
             } catch(e) {
-                console.log('localStorage недоступен:', e.message);
+                console.log('⚠️ localStorage недоступен:', e.message);
             }
         })();
 
+        // === КОНФИГУРАЦИЯ ===
         const SUPABASE_URL = 'https://rqiutnpawsmqvmzewamc.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_K1aNLiU_605Z7WccyWWPbQ_or-QVNbX';
         const ADMIN_USER_ID = '2038206387';
        
-        console.log('Admin App v' + APP_VERSION + ' starting...');
+        console.log('🚀 Admin App v' + APP_VERSION + ' starting...');
 
-        // Отладка для мобильного
-window.addEventListener('error', function(e) {
-    alert('Ошибка: ' + e.message + '\nСтрока: ' + e.lineno);
-});
-
-window.addEventListener('unhandledrejection', function(e) {
-    alert('Promise ошибка: ' + e.reason);
-});
-        
+        // === ИНИЦИАЛИЗАЦИЯ TELEGRAM ===
         let tg = null;
         try {
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
-                console.log('Telegram WebApp initialized');
+                console.log('✅ Telegram WebApp initialized');
             }
         } catch(e) {
-            console.log('Telegram init error:', e.message);
+            console.log('⚠️ Telegram init error:', e.message);
         }
 
+        // === ИНИЦИАЛИЗАЦИЯ SUPABASE ===
         let db;
         try {
             db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase initialized');
+            console.log('✅ Supabase initialized');
         } catch(e) {
-            console.error('Supabase init error:', e);
+            console.error('❌ Supabase init error:', e);
         }
-
         let selectedFiles = { main: null, gallery: [], plans: [] };
 
+        // === НАВИГАЦИЯ ===
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
             document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
             document.getElementById('tab-' + tabName).classList.add('active');
-            event.target.classList.add('active');           
+            event.target.classList.add('active');
+           
             if (tabName === 'leads') loadLeads();
             if (tabName === 'agent') loadAgentData();
         }
@@ -271,10 +270,11 @@ window.addEventListener('unhandledrejection', function(e) {
             }
         }
 
+        // === ЗАГРУЗКА ОБЪЕКТОВ ===
         async function loadProperties() {
-            console.log('Loading properties...');
+            console.log('📥 Loading properties...');
             const list = document.getElementById('properties-list');
-            list.innerHTML = 'Загрузка...';
+            list.innerHTML = '<p style="text-align:center;padding:30px;color:#666;">⏳ Загрузка...</p>';
            
             try {
                 const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
@@ -282,7 +282,7 @@ window.addEventListener('unhandledrejection', function(e) {
                 if (error) throw error;
                
                 if (!data || data.length === 0) {
-                    list.innerHTML = '<p style="text-align:center;color:#999;">Нет объектов</p>';
+                    list.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">⚠️ Нет объектов</p>';
                     return;
                 }
                
@@ -292,18 +292,18 @@ window.addEventListener('unhandledrejection', function(e) {
                         '<p>📍 ' + (p.address || 'Адрес не указан') + '</p>' +
                         '<p>💰 ' + (p.price_from ? p.price_from + ' - ' + p.price_to + ' руб.' : 'Цена не указана') + '</p>' +
                         (p.image_main ? '<img src="' + p.image_main + '" alt="Фото">' : '') +
-                        '<div class="actions">' +
-                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ', this)">' +
+                        '<div class="actions">' +                            '<button class="btn btn-sm ' + (p.active !== false ? 'btn-secondary' : 'btn-success') + '" onclick="toggleProperty(\'' + p.id + '\', ' + (p.active !== false) + ')">' +
                                 (p.active !== false ? 'Скрыть' : 'Показать') +
                             '</button>' +
                             '<button class="btn btn-sm btn-primary" onclick="editProperty(\'' + p.id + '\')">Ред.</button>' +
-                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\', this)">Удалить</button>' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteProperty(\'' + p.id + '\')">Удалить</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
-                            } catch (error) {
-                console.error('Ошибка загрузки:', error);
-                list.innerHTML = 'Ошибка: ' + error.message;
+               
+            } catch (error) {
+                console.error('❌ Ошибка загрузки:', error);
+                list.innerHTML = '<p style="text-align:center;color:#dc3545;padding:30px;">❌ Ошибка: ' + error.message + '</p>';
             }
         }
 
@@ -323,7 +323,6 @@ window.addEventListener('unhandledrejection', function(e) {
         }
 
         async function editProperty(id) {
-            console.log('Редактирование:', id);
             const { data: p, error } = await db.from('properties').select('*').eq('id', id).single();
             if (error) return alert('Ошибка: ' + error.message);
            
@@ -342,15 +341,15 @@ window.addEventListener('unhandledrejection', function(e) {
             document.getElementById('prop-description').value = p.description || '';
             document.getElementById('modal-title').textContent = 'Редактировать';
            
-            selectedFiles = { main: null, gallery: [], plans: [] };
-            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
+            selectedFiles = { main: null, gallery: [], plans: [] };            document.getElementById('main-preview').innerHTML = p.image_main ? '<img src="' + p.image_main + '">' : '';
             document.getElementById('gallery-preview').innerHTML = p.images_gallery ? p.images_gallery.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
             document.getElementById('plan-preview').innerHTML = p.floor_plans_images ? p.floor_plans_images.split(',').map(function(u) { return '<img src="' + u.trim() + '">'; }).join('') : '';
            
             document.getElementById('property-modal').classList.add('active');
         }
 
-        function previewPhoto(input, previewId) {            const file = input.files[0];
+        function previewPhoto(input, previewId) {
+            const file = input.files[0];
             if (!file) return;
            
             try {
@@ -362,7 +361,7 @@ window.addEventListener('unhandledrejection', function(e) {
                 };
                 reader.readAsDataURL(file);
             } catch (err) {
-                showAlert(' ' + err.message, 'error');
+                showAlert('❌ ' + err.message, 'error');
                 input.value = '';
             }
         }
@@ -389,17 +388,16 @@ window.addEventListener('unhandledrejection', function(e) {
         }
 
         async function uploadToCloudinary(file, objectId) {
-            console.log('Загрузка в Cloudinary:', file.name);
             const { data: sig, error: sigErr } = await db.rpc('get_cloudinary_signature', {
                 p_admin_id: ADMIN_USER_ID,
-                p_object_id: objectId
-            });
+                p_object_id: objectId             });
             if (sigErr) throw new Error('Ошибка подписи: ' + sigErr.message);
            
             const fd = new FormData();
             fd.append('file', file);
             fd.append('api_key', sig.api_key);
-            fd.append('timestamp', sig.timestamp);            fd.append('signature', sig.signature);
+            fd.append('timestamp', sig.timestamp);
+            fd.append('signature', sig.signature);
             fd.append('folder', sig.folder);
            
             const res = await fetch('https://api.cloudinary.com/v1_1/' + sig.cloud_name + '/image/upload', {
@@ -441,14 +439,14 @@ window.addEventListener('unhandledrejection', function(e) {
                     status: document.getElementById('prop-status').value,
                     description: document.getElementById('prop-description').value || null,
                     image_main: null,
-                    images_gallery: '',
-                    floor_plans_images: '',
+                    images_gallery: '',                    floor_plans_images: '',
                     active: true
                 };
 
                 if (selectedFiles.main || selectedFiles.gallery.length || selectedFiles.plans.length) {
                     if (selectedFiles.main) {
-                        const r = await uploadToCloudinary(selectedFiles.main, objectId);                        data.image_main = r.secure_url;
+                        const r = await uploadToCloudinary(selectedFiles.main, objectId);
+                        data.image_main = r.secure_url;
                     }
                     if (selectedFiles.gallery.length) {
                         const urls = [];
@@ -484,55 +482,23 @@ window.addEventListener('unhandledrejection', function(e) {
                 closePropertyModal();
                 loadProperties();
             } catch (err) {
-                console.error('Ошибка:', err);
                 showAlert('alert-props', 'Ошибка: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = origText;
             }
         });
-
-        async function toggleProperty(id, currentStatus, btn) {
-            console.log('Переключение:', id, currentStatus);
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '...';
-                        try {
-                const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
-                if (error) throw error;
-               
-                setTimeout(function() { loadProperties(); }, 500);
-            } catch(e) {
-                console.error('Ошибка:', e);
-                alert('Ошибка: ' + e.message);
-                loadProperties();
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
+        async function toggleProperty(id, currentStatus) {
+            const { error } = await db.from('properties').update({ active: !currentStatus }).eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
         }
 
-        async function deleteProperty(id, btn) {
+        async function deleteProperty(id) {
             if (!confirm('Удалить объект?')) return;
-           
-            console.log('Удаление:', id);
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '...';
-           
-            try {
-                const { error } = await db.from('properties').delete().eq('id', id);
-                if (error) throw error;
-               
-                setTimeout(function() { loadProperties(); }, 500);
-            } catch(e) {
-                console.error('Ошибка:', e);
-                alert('Ошибка: ' + e.message);
-                loadProperties();
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
+            const { error } = await db.from('properties').delete().eq('id', id);
+            if (error) return alert('Ошибка: ' + error.message);
+            loadProperties();
         }
 
         async function loadLeads() {
@@ -546,7 +512,8 @@ window.addEventListener('unhandledrejection', function(e) {
                 return '<div class="card">' +
                     '<h3>' + (l.name || 'Аноним') + '</h3>' +
                     '<p>📞 ' + (l.phone || 'Телефон не указан') + '</p>' +
-                    '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +                    '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
+                    '<p>💬 ' + (l.message || 'Сообщение пустое') + '</p>' +
+                    '<p style="font-size:12px;color:#999;">' + new Date(l.created_at).toLocaleString() + '</p>' +
                 '</div>';
             }).join('');
         }
@@ -570,8 +537,7 @@ window.addEventListener('unhandledrejection', function(e) {
                 .from('pages')
                 .select('content')
                 .eq('page_key', 'about')
-                .single();
-           
+                .single();           
             if (pageData && pageData.content) {
                 const cleanText = pageData.content
                     .replace(/<br\s*\/?>/gi, '\n')
@@ -595,7 +561,8 @@ window.addEventListener('unhandledrejection', function(e) {
             };
            
             const { error } = await db.from('agent_data').upsert(data, { onConflict: 'owner_id' });
-            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');            showAlert('alert-agent', 'Контакты сохранены!', 'success');
+            if (error) return showAlert('alert-agent', 'Ошибка: ' + error.message, 'error');
+            showAlert('alert-agent', 'Контакты сохранены!', 'success');
         }
 
         async function saveAboutPage() {
@@ -614,6 +581,7 @@ window.addEventListener('unhandledrejection', function(e) {
             showAlert('alert-agent', 'Текст обновлён!', 'success');
         }
 
+        // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', loadProperties);
     </script>
 </body>
